@@ -88,20 +88,35 @@ CTR=pdf2epub test/smoke.sh http://localhost:3000
 changing the Dockerfile or upgrading Calibre — it catches the failures that are
 otherwise silent, like images going missing from the book.
 
-## A note on the Calibre version
+GitHub Actions runs exactly this on every push (`.github/workflows/ci.yml`). That
+matters beyond convenience: the runners are **x86_64**, so CI is the only place the
+amd64 image is exercised — building on an Apple Silicon Mac produces arm64 and
+would not catch an amd64-only break, which is what a typical VPS would hit.
 
-Debian stable ships **Calibre 6.x**, several years behind current. Everything that
-matters still holds there — verified in the container: relative `em` font sizes, no
-leaked `font-family`, no embedded fonts, working covers — so books remain fully
-resizable on a reader.
+## Why Calibre comes from upstream, not apt
 
-The one difference: Calibre 6 produces a **flatter heading hierarchy**. Converting
-the same PDF, Calibre 9 emitted five distinct sizes (`0.75em` … `1.67em`) while
-Calibre 6 emitted only `1em` — so headings are not visually larger than body text.
+Debian stable ships **Calibre 6.x**, and it produces a noticeably worse book:
+converting the same PDF, Calibre 9 emits five distinct heading sizes
+(`0.75em` … `1.67em`) while Calibre 6 collapses everything to `1em`, so headings
+are no larger than body text. Everything else held on 6.x — relative font sizes,
+no leaked `font-family`, working covers — but flat headings are a real
+regression in a book.
 
-If that matters, install Calibre from upstream in the Dockerfile instead of from
-apt (its official installer script fetches a current build), at the cost of a
-larger image and a slower, network-dependent build.
+So the image installs a **pinned** Calibre (`CALIBRE_VERSION`, currently 9.12.0)
+as the official tarball for the build's architecture. Pinned rather than "latest"
+so a rebuild months from now still produces the same book, and fetched as a
+tarball over HTTPS rather than piping the install script into a shell. The build
+then runs `ebook-convert --version` so a missing Qt library fails the build
+instead of every conversion at runtime.
+
+Override the version at build time if needed:
+
+```bash
+docker build --build-arg CALIBRE_VERSION=9.12.0 -t pdf-to-epub .
+```
+
+CI asserts the running Calibre is 9.x, so a silent fall back to apt's 6.x can't
+slip through unnoticed.
 
 ## Configuration
 

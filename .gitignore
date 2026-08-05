@@ -7,3 +7,6 @@ node_modules/
 
 # …but the smoke-test fixtures are part of the project
 !test/*.pdf
+
+# scratch file written by test/smoke.sh
+test/.last_job

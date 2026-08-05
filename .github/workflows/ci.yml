@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A newer push supersedes an in-flight run on the same ref.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Build image and run conversion suite
+    runs-on: ubuntu-latest
+    # Building Calibre + Tesseract and OCR'ing test books is not quick.
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Runners are x86_64, so this is also the only place the amd64 build gets
+      # exercised — a Mac builds arm64 and would not catch an amd64-only break.
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: pdf-to-epub:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container
+        run: |
+          docker run -d --name pdf2epub -p 3000:3000 pdf-to-epub:ci
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3000/api/health >/dev/null; then
+              echo "up after ${i}s"; exit 0
+            fi
+            if ! docker ps --filter name=pdf2epub --format '{{.Status}}' | grep -q Up; then
+              echo "::error::container exited during startup"; docker logs pdf2epub; exit 1
+            fi
+            sleep 1
+          done
+          echo "::error::container did not become healthy in 60s"; docker logs pdf2epub; exit 1
+
+      - name: Report engine versions
+        run: |
+          echo "### Engine versions" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo '```'
+            docker exec pdf2epub ebook-convert --version
+            docker exec pdf2epub ocrmypdf --version | sed 's/^/ocrmypdf /'
+            docker exec pdf2epub tesseract --version | head -1
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Guards the reason we install Calibre from upstream: Debian's 6.x collapses
+      # every font-size to 1em, so headings stop being larger than body text.
+      - name: Assert Calibre is the pinned upstream build
+        run: |
+          v=$(docker exec pdf2epub ebook-convert --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "calibre $v"
+          major=${v%%.*}
+          if [ "$major" -lt 9 ]; then
+            echo "::error::expected Calibre 9.x from upstream, got $v (apt fallback?)"
+            exit 1
+          fi
+
+      - name: Conversion suite
+        run: CTR=pdf2epub test/smoke.sh http://localhost:3000
+
+      - name: Container logs
+        if: always()
+        run: docker logs pdf2epub
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f pdf2epub || true
