@@ -1,0 +1,621 @@
+/* ---------------------------------------------------------------------------
+   E-reader styling.
+
+   The look is built from how e-ink actually behaves: warm paper, one ink colour,
+   crisp 1px rules, and NO gradients, colour accents or drop shadows on the
+   "screen" itself — an e-ink panel can't render them. Typography does the work,
+   so everything is set in a serif the way a book would be.
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* Paper (light) — the default e-ink page */
+  --paper: #f7f4ec;
+  --paper-edge: #ebe6d9;
+  --ink: #1b1a17;
+  --ink-soft: #56534c;
+  --ink-faint: #8b877e;
+  --rule: #d8d2c4;
+  --bezel: #35332f;
+  --bezel-edge: #201f1c;
+  --room: #cfc9bb;
+
+  /* Literata is drawn for long-form reading on screens — the same job Bookerly
+     does on a Kindle. Fallbacks are book faces too, so a slow font load never
+     drops the page into a mismatched sans. */
+  --serif: "Literata", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+    "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+
+  /* Faint paper grain — sells "paper" more than any colour could */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+/* Reader dark mode: near-black panel, warm-grey ink. Bezel stays dark. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121211;
+    --paper-edge: #191918;
+    --ink: #d9d5cc;
+    --ink-soft: #9d9890;
+    --ink-faint: #6f6b64;
+    --rule: #2f2e2b;
+    --bezel: #1a1a18;
+    --bezel-edge: #000;
+    --room: #0a0a09;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121211;
+  --paper-edge: #191918;
+  --ink: #d9d5cc;
+  --ink-soft: #9d9890;
+  --ink-faint: #6f6b64;
+  --rule: #2f2e2b;
+  --bezel: #1a1a18;
+  --bezel-edge: #000;
+  --room: #0a0a09;
+}
+:root[data-theme="light"] {
+  --paper: #f7f4ec;
+  --paper-edge: #ebe6d9;
+  --ink: #1b1a17;
+  --ink-soft: #56534c;
+  --ink-faint: #8b877e;
+  --rule: #d8d2c4;
+  --bezel: #35332f;
+  --bezel-edge: #201f1c;
+  --room: #cfc9bb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 32px 16px 48px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: var(--room);
+  color: var(--ink);
+  font-family: var(--serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- The device ---- */
+.device {
+  width: 100%;
+  max-width: 560px;
+  background: var(--bezel);
+  border: 1px solid var(--bezel-edge);
+  border-radius: 18px;
+  padding: 18px 16px 22px;
+  /* The only shadow on the page: the device sitting in the room, not on-screen */
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.screen {
+  background: var(--paper);
+  background-image: var(--grain);
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 60vh;
+}
+
+/* ---- Status bar ---- */
+.statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 18px 8px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.sb-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ico {
+  width: 20px;
+  height: 13px;
+  fill: none;
+  stroke: var(--ink-faint);
+  stroke-width: 1.4;
+}
+/* Light/dark switch — the contrast control an e-reader would have */
+.sb-btn {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  margin-right: 3px;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+.sb-btn svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.sb-btn:hover {
+  color: var(--ink);
+  border-color: var(--rule);
+}
+
+/* ---- The page ---- */
+.page {
+  flex: 1;
+  padding: 30px 30px 26px;
+}
+
+.hero {
+  text-align: center;
+}
+.mark {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  margin-bottom: 12px;
+}
+.hero h1 {
+  margin: 0;
+  font-size: 33px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  line-height: 1.15;
+}
+.hero h1 .arrow {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+.byline {
+  margin: 6px 0 0;
+  font-style: italic;
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+.rule {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  width: 54px;
+  margin: 18px auto;
+}
+.tagline {
+  margin: 0 auto;
+  max-width: 42ch;
+  font-size: 14.5px;
+  line-height: 1.62;
+  color: var(--ink-soft);
+  text-align: justify;
+  hyphens: auto;
+}
+
+/* ---- Drop zone ---- */
+.dropzone {
+  margin-top: 26px;
+  padding: 34px 20px;
+  border: 1px dashed var(--rule);
+  text-align: center;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dropzone:hover,
+.dropzone:focus-visible {
+  border-color: var(--ink-faint);
+}
+/* E-ink "inverted selection" — the closest thing e-ink has to a hover state */
+.dropzone.dragover {
+  border-color: var(--ink);
+  border-style: solid;
+  background: var(--paper-edge);
+}
+.dz-ico {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: var(--ink-soft);
+  stroke-width: 1.3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  margin-bottom: 10px;
+}
+.dz-title {
+  margin: 0 0 3px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.dz-sub {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.dz-sub .link {
+  border-bottom: 1px solid var(--ink-faint);
+  padding-bottom: 1px;
+}
+.dz-limit {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ---- Selected file ---- */
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 13px 15px;
+  border: 1px solid var(--rule);
+  background: var(--paper-edge);
+}
+.fc-ico {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  fill: none;
+  stroke: var(--ink-soft);
+  stroke-width: 1.3;
+  stroke-linejoin: round;
+}
+.fc-meta {
+  flex: 1;
+  min-width: 0;
+}
+.fc-name {
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fc-size {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+.fc-remove {
+  border: 1px solid transparent;
+  background: none;
+  color: var(--ink-faint);
+  font-size: 19px;
+  line-height: 1;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-family: var(--sans);
+}
+.fc-remove:hover {
+  color: var(--ink);
+  border-color: var(--rule);
+}
+
+/* ---- Settings ---- */
+.options {
+  margin-top: 22px;
+  border-top: 1px solid var(--rule);
+}
+.options summary {
+  cursor: pointer;
+  padding: 13px 0 12px;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  user-select: none;
+  list-style: none;
+}
+.options summary::-webkit-details-marker {
+  display: none;
+}
+.options summary::after {
+  content: " +";
+}
+.options[open] summary {
+  color: var(--ink-soft);
+}
+.options[open] summary::after {
+  content: " –";
+}
+
+.opt-grid {
+  display: grid;
+  gap: 16px;
+  padding-bottom: 20px;
+}
+.opt-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lbl {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.lbl em,
+.opt-grid em {
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-faint);
+}
+.opt-grid input[type="text"],
+.opt-grid select {
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 7px 2px;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.opt-grid select {
+  /* Flat ink chevron — no OS gradient widget */
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-faint) 50%),
+    linear-gradient(135deg, var(--ink-faint) 50%, transparent 50%);
+  background-position: right 9px center, right 4px center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 22px;
+}
+.opt-grid input[type="text"]:focus,
+.opt-grid select:focus {
+  outline: none;
+  border-bottom-color: var(--ink);
+}
+.opt-grid input::placeholder {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.opt-grid .checkbox {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.opt-grid .checkbox input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  flex: none;
+  margin-top: 3px;
+  border: 1px solid var(--ink-faint);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+.opt-grid .checkbox input:checked {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.opt-grid .checkbox input:checked::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--paper);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(43deg);
+}
+.opt-grid label.disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.opt-grid label.disabled input {
+  cursor: not-allowed;
+}
+
+/* ---- Segmented mode picker: the row-of-keys control an e-reader uses ---- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--rule);
+}
+.seg {
+  padding: 9px 6px;
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--rule);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.seg:last-child {
+  border-right: 0;
+}
+.seg:hover:not(.is-on) {
+  background: var(--paper-edge);
+  color: var(--ink);
+}
+/* Selected reads as inverted ink — how e-ink shows a chosen key */
+.seg.is-on {
+  background: var(--ink);
+  color: var(--paper);
+}
+.seg:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: -3px;
+}
+
+.mode-hint {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.58;
+  color: var(--ink-soft);
+  min-height: 3.2em; /* reserve space so switching modes doesn't jump the layout */
+}
+.mode-hint strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ---- Convert button: solid ink block, the way e-ink renders a pressed key ---- */
+.convert-btn {
+  width: 100%;
+  margin-top: 20px;
+  padding: 14px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.convert-btn:hover:not(:disabled) {
+  opacity: 0.86;
+}
+.convert-btn:disabled {
+  color: var(--ink-faint);
+  background: transparent;
+  border-color: var(--rule);
+  cursor: not-allowed;
+}
+
+/* ---- Status ---- */
+.status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.status.success {
+  border-color: var(--ink-faint);
+  color: var(--ink);
+}
+.status.error {
+  border-color: var(--ink);
+  border-left-width: 3px;
+  color: var(--ink);
+}
+/* E-ink refresh: a square that blinks rather than a spinning colour wheel */
+.spinner {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border: 1px solid var(--ink);
+  animation: eink 1s steps(2, end) infinite;
+}
+@keyframes eink {
+  0%,
+  49% {
+    background: transparent;
+  }
+  50%,
+  100% {
+    background: var(--ink);
+  }
+}
+
+/* ---- Progress: a page-fill bar, the way a reader shows position ---- */
+.progress {
+  margin-top: 8px;
+  height: 3px;
+  background: var(--paper-edge);
+  border: 1px solid var(--rule);
+}
+.progress-bar {
+  height: 100%;
+  width: 0;
+  background: var(--ink);
+  transition: width 0.3s linear;
+}
+
+/* ---- Footer bar ---- */
+.pagefoot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px 10px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ---- Small screens: slimmer bezel, tighter page margins ---- */
+@media (max-width: 560px) {
+  body {
+    padding: 14px 10px 26px;
+  }
+  .device {
+    padding: 11px 9px 14px;
+    border-radius: 14px;
+  }
+  .page {
+    padding: 24px 20px 22px;
+  }
+  .hero h1 {
+    font-size: 27px;
+  }
+  .tagline {
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    background: var(--ink);
+  }
+}

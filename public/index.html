@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDF → EPUB Converter</title>
+    <meta
+      name="description"
+      content="Convert PDF files into EPUB for Kindle and other e-readers."
+    />
+    <link rel="preload" href="/fonts/literata-latin-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/fonts/literata.css" />
+    <link rel="stylesheet" href="/style.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23222' stroke-width='1.6'><path d='M3 5.5A1.5 1.5 0 0 1 4.5 4H10a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4.5A1.5 1.5 0 0 1 3 15.5z'/><path d='M21 5.5A1.5 1.5 0 0 0 19.5 4H14a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h5.5a1.5 1.5 0 0 0 1.5-1.5z'/></svg>"
+    />
+  </head>
+  <body>
+    <!-- The whole page is framed as an e-reader device: a bezel around an
+         e-ink "screen" that holds the converter, set like a book page. -->
+    <div class="device">
+      <div class="screen">
+        <!-- Device status bar, the way an e-reader shows one -->
+        <div class="statusbar">
+          <span class="sb-title">Library</span>
+          <span class="sb-right">
+            <button
+              id="themeBtn"
+              class="sb-btn"
+              title="Light / dark"
+              aria-label="Switch between light and dark"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
+            <svg class="ico" viewBox="0 0 24 16" aria-hidden="true">
+              <path d="M2 3h16v10H2z" />
+              <path d="M20 6v4" />
+            </svg>
+            <span class="sb-pct">100%</span>
+          </span>
+        </div>
+
+        <div class="page">
+          <header class="hero">
+            <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M3 5.5A1.5 1.5 0 0 1 4.5 4H10a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4.5A1.5 1.5 0 0 1 3 15.5z"
+              />
+              <path
+                d="M21 5.5A1.5 1.5 0 0 0 19.5 4H14a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h5.5a1.5 1.5 0 0 0 1.5-1.5z"
+              />
+            </svg>
+            <h1>PDF <span class="arrow">to</span> EPUB</h1>
+            <p class="byline">for your e-reader</p>
+            <hr class="rule" />
+            <p class="tagline">
+              Drop in a PDF and get back a clean EPUB you can actually read —
+              adjustable text, real chapters, a proper cover. Files are converted
+              on the fly and deleted straight after.
+            </p>
+          </header>
+
+          <section id="dropzone" class="dropzone" tabindex="0" aria-label="Upload a PDF">
+            <input type="file" id="fileInput" accept="application/pdf,.pdf" hidden />
+            <div class="dz-inner">
+              <svg class="dz-ico" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 2h8l4 4v16H6z" />
+                <path d="M14 2v4h4" />
+                <path d="M12 17v-6" />
+                <path d="M9.5 13.5 12 11l2.5 2.5" />
+              </svg>
+              <p class="dz-title">Place a PDF here</p>
+              <p class="dz-sub">or <span class="link">choose a file</span></p>
+              <p class="dz-limit" id="limitNote">PDF only · up to 50 MB</p>
+            </div>
+          </section>
+
+          <div id="fileCard" class="file-card hidden">
+            <svg class="fc-ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 2h8l4 4v16H6z" />
+              <path d="M14 2v4h4" />
+            </svg>
+            <div class="fc-meta">
+              <div class="fc-name" id="fcName">document.pdf</div>
+              <div class="fc-size" id="fcSize">—</div>
+            </div>
+            <button class="fc-remove" id="fcRemove" title="Remove" aria-label="Remove file">
+              ×
+            </button>
+          </div>
+
+          <details class="options">
+            <summary>Settings</summary>
+            <div class="opt-grid">
+              <div class="field">
+                <span class="lbl">Conversion mode</span>
+                <!-- The real value app.js reads; the buttons below drive it. -->
+                <input type="hidden" id="mode" value="auto" />
+                <div class="segmented" role="radiogroup" aria-label="Conversion mode">
+                  <button
+                    type="button"
+                    class="seg is-on"
+                    data-mode="auto"
+                    role="radio"
+                    aria-checked="true"
+                  >
+                    Auto
+                  </button>
+                  <button
+                    type="button"
+                    class="seg"
+                    data-mode="reflowable"
+                    role="radio"
+                    aria-checked="false"
+                  >
+                    Reflowable
+                  </button>
+                  <button
+                    type="button"
+                    class="seg"
+                    data-mode="fixed"
+                    role="radio"
+                    aria-checked="false"
+                  >
+                    Fixed layout
+                  </button>
+                </div>
+                <p class="mode-hint" id="modeHint"></p>
+              </div>
+
+              <label>
+                <span class="lbl">Title <em>(overrides what's detected)</em></span>
+                <input type="text" id="title" placeholder="Auto-detected from PDF / filename" />
+              </label>
+              <label>
+                <span class="lbl">Author</span>
+                <input type="text" id="author" placeholder="Auto-detected from the PDF" />
+              </label>
+              <label>
+                <span class="lbl">Target device</span>
+                <select id="profile">
+                  <option value="tablet" selected>Tablet / general</option>
+                  <option value="kindle_pw3">6" e-ink reader</option>
+                  <option value="kindle_oasis">7" e-ink reader</option>
+                  <option value="generic_eink">Generic e-ink</option>
+                </select>
+              </label>
+
+              <label class="checkbox">
+                <input type="checkbox" id="heuristics" checked />
+                <span
+                  >Smart formatting
+                  <em>— detect chapters &amp; tidy the layout</em></span
+                >
+              </label>
+
+              <label class="checkbox" id="ocrRow">
+                <input type="checkbox" id="ocr" />
+                <span
+                  >Read text from scanned pages (OCR)
+                  <em
+                    >— makes text adjustable on scanned PDFs. Much slower, and the
+                    result is text-only (figures aren't kept).</em
+                  ></span
+                >
+              </label>
+              <label id="ocrLangRow" class="hidden">
+                <span class="lbl">OCR language</span>
+                <select id="ocrLang">
+                  <option value="eng" selected>English</option>
+                  <option value="tur">Turkish</option>
+                  <option value="deu">German</option>
+                  <option value="fra">French</option>
+                  <option value="spa">Spanish</option>
+                  <option value="ita">Italian</option>
+                  <option value="por">Portuguese</option>
+                  <option value="nld">Dutch</option>
+                </select>
+              </label>
+            </div>
+          </details>
+
+          <button id="convertBtn" class="convert-btn" disabled>Convert to EPUB</button>
+
+          <div id="status" class="status hidden" role="status" aria-live="polite">
+            <div class="spinner" id="spinner"></div>
+            <span id="statusText">Converting…</span>
+          </div>
+          <div id="progress" class="progress hidden" aria-hidden="true">
+            <div id="progressBar" class="progress-bar"></div>
+          </div>
+        </div>
+
+        <!-- Reader-style footer bar -->
+        <div class="pagefoot">
+          <span id="engine">Powered by Calibre</span>
+          <span class="foot-dot">·</span>
+          <span>Files are never stored</span>
+        </div>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

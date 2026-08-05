@@ -1,0 +1,41 @@
+# Production stack: the app behind Caddy (automatic HTTPS).
+# Usage on your server:
+#   cp .env.example .env   # then edit SITE_DOMAIN and ADMIN_EMAIL
+#   docker compose -f docker-compose.prod.yml up -d --build
+services:
+  pdf2epub:
+    build: .
+    image: pdf-to-epub
+    container_name: pdf2epub
+    restart: unless-stopped
+    environment:
+      MAX_FILE_MB: 50
+      CONCURRENCY: 2
+      CONVERT_TIMEOUT_MS: 1200000
+    # Not published to the host — only Caddy (same network) can reach it.
+    expose:
+      - "3000"
+    mem_limit: 2g
+    cpus: 2.0
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # persists the TLS certificates across restarts
+      - caddy_config:/config
+    depends_on:
+      - pdf2epub
+
+volumes:
+  caddy_data:
+  caddy_config:

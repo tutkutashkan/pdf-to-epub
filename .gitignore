@@ -1,0 +1,9 @@
+node_modules/
+*.log
+.DS_Store
+.env
+*.pdf
+*.epub
+
+# …but the smoke-test fixtures are part of the project
+!test/*.pdf

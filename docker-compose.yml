@@ -1,0 +1,15 @@
+services:
+  pdf2epub:
+    build: .
+    image: pdf-to-epub
+    container_name: pdf2epub
+    ports:
+      - "3000:3000"
+    environment:
+      MAX_FILE_MB: 50
+      CONCURRENCY: 2
+      CONVERT_TIMEOUT_MS: 1200000
+    restart: unless-stopped
+    # Guardrails so one huge PDF can't take down the host.
+    mem_limit: 2g
+    cpus: 2.0

@@ -1,0 +1,35 @@
+# Caddy reverse proxy with automatic HTTPS (Let's Encrypt).
+# {$SITE_DOMAIN} and {$ADMIN_EMAIL} come from the .env file / environment.
+
+{
+	# Email used for Let's Encrypt account + expiry notices.
+	email {$ADMIN_EMAIL}
+}
+
+{$SITE_DOMAIN} {
+	# Forward everything to the Node app (reachable by service name on the
+	# internal Docker network). Caddy terminates TLS; the app stays HTTP-only.
+	reverse_proxy pdf2epub:3000
+
+	# Allow uploads a little larger than the app's MAX_FILE_MB so the app,
+	# not the proxy, is what returns the friendly "file too large" message.
+	request_body {
+		max_size 60MB
+	}
+
+	# Compress text responses (HTML/CSS/JS); EPUB/JPEG are already compressed.
+	encode gzip zstd
+
+	# Basic hardening headers.
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
