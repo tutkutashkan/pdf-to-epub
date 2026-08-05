@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:*)",
+      "Bash(node --check *)",
+      "Bash(pdfinfo *)",
+      "Bash(unzip -l *)",
+      "Bash(unzip -p *)",
+      "mcp__Claude_Preview__preview_screenshot",
+      "mcp__Claude_Preview__preview_console_logs",
+      "mcp__Claude_Preview__preview_snapshot",
+      "mcp__Claude_Preview__preview_logs",
+      "mcp__Claude_Browser__read_console_messages"
+    ]
+  }
+}
