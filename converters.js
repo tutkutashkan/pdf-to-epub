@@ -67,6 +67,17 @@ export async function capabilities() {
   return capsCache.value;
 }
 
+// ---- How many pages? Cheap: pdfinfo only, no text extraction ----
+export async function pageCount(inputPath) {
+  try {
+    const { stdout } = await execFileAsync(PDFINFO, [inputPath], { timeout: 30000 });
+    const m = stdout.match(/^Pages:\s+(\d+)/m);
+    return m ? Number(m[1]) : 0;
+  } catch {
+    return 0; // unreadable or pdfinfo missing — progress just won't show a total
+  }
+}
+
 // ---- Detection: does this PDF actually contain selectable text? ----
 export async function inspectPdf(inputPath) {
   let pages = 0;
@@ -225,9 +236,12 @@ async function buildOcrDocument(inputPath, jobDir, pagesText, opts = {}) {
   let textPages = 0;
   let imagePages = 0;
 
-  for (let i = 0; i < pagesText.length; i++) {
+  const total = pagesText.length;
+  for (let i = 0; i < total; i++) {
     const n = i + 1;
     const raw = (pagesText[i] || "").trim();
+    // Rasterising the unreadable pages happens in this loop, so report as we go.
+    opts.onProgress?.({ page: n, pages: total });
 
     if (raw.replace(/\s/g, "").length >= OCR_MIN_CHARS_PER_PAGE) {
       textPages++;
@@ -313,25 +327,47 @@ export async function convertReflowable(inputPath, outputPath, jobDir, opts = {}
 
   const timeoutMs = opts.timeoutMs || CONVERT_TIMEOUT_MS;
 
-  const run = async (extraArgs) => {
-    try {
-      await execFileAsync(EBOOK_CONVERT, [...args, ...extraArgs], {
-        timeout: timeoutMs,
-        maxBuffer: 20 * 1024 * 1024,
+  // Spawned rather than exec'd so Calibre's progress can be streamed as it runs.
+  // It prints lines like "34% Running transforms on e-book...", which is the only
+  // insight available into a phase that can take minutes on a full-length book.
+  const run = (extraArgs) =>
+    new Promise((resolve, reject) => {
+      const child = spawn(EBOOK_CONVERT, [...args, ...extraArgs]);
+      let stderr = "";
+      let killedByTimeout = false;
+
+      const timer = setTimeout(() => {
+        killedByTimeout = true;
+        child.kill("SIGTERM");
+      }, timeoutMs);
+
+      child.stdout.on("data", (buf) => {
+        for (const line of buf.toString().split("\n")) {
+          const m = line.match(/^\s*(\d+)%\s+(.*\S)/);
+          if (m) opts.onProgress?.({ percent: Number(m[1]), detail: m[2].replace(/\.\.\.$/, "") });
+        }
       });
-    } catch (e) {
-      // execFile's message is just the command line — the actual reason lives in
-      // stderr, and a timeout only shows up as a kill signal. Surface both, or
-      // failures on real books are undiagnosable.
-      if (e.killed || e.signal === "SIGTERM") {
-        const err = new Error(`Calibre timed out after ${Math.round(timeoutMs / 60000)} min`);
-        err.isTimeout = true;
-        throw err;
-      }
-      const detail = (e.stderr || "").toString().trim().split("\n").slice(-6).join(" | ");
-      throw new Error(`Calibre failed${detail ? `: ${detail}` : ` (exit ${e.code})`}`);
-    }
-  };
+      // Keep only the tail: Calibre's tracebacks are long and only the end matters.
+      child.stderr.on("data", (buf) => {
+        stderr = (stderr + buf.toString()).slice(-4000);
+      });
+
+      child.on("error", (e) => {
+        clearTimeout(timer);
+        reject(e); // ENOENT etc. — surfaced as "tool not installed"
+      });
+      child.on("close", (code) => {
+        clearTimeout(timer);
+        if (killedByTimeout) {
+          const err = new Error(`Calibre timed out after ${Math.round(timeoutMs / 60000)} min`);
+          err.isTimeout = true;
+          return reject(err);
+        }
+        if (code === 0) return resolve();
+        const detail = stderr.trim().split("\n").slice(-6).join(" | ");
+        reject(new Error(`Calibre failed${detail ? `: ${detail}` : ` (exit ${code})`}`));
+      });
+    });
 
   const wantsHeuristics = opts.heuristics !== false;
   let heuristicsSkipped = false;
@@ -387,11 +423,26 @@ export async function convertFixedLayout(inputPath, outputPath, jobDir, opts = {
   await fs.mkdir(pagesDir, { recursive: true });
 
   // Render every page to pages/page-N.jpg (pdftoppm zero-pads the number).
-  await execFileAsync(
-    PDFTOPPM,
-    ["-jpeg", "-r", String(opts.dpi || RASTER_DPI), inputPath, path.join(pagesDir, "page")],
-    { timeout: opts.timeoutMs || 5 * 60 * 1000, maxBuffer: 20 * 1024 * 1024 }
-  );
+  // pdftoppm prints no progress, so count the files it has written instead —
+  // rendering a long book is otherwise several silent minutes.
+  const expected = opts.totalPages || 0;
+  const ticker = opts.onProgress
+    ? setInterval(async () => {
+        const done = (await fs.readdir(pagesDir).catch(() => [])).filter((f) =>
+          /\.jpe?g$/i.test(f)
+        ).length;
+        opts.onProgress({ page: done, pages: expected });
+      }, 1000)
+    : null;
+  try {
+    await execFileAsync(
+      PDFTOPPM,
+      ["-jpeg", "-r", String(opts.dpi || RASTER_DPI), inputPath, path.join(pagesDir, "page")],
+      { timeout: opts.timeoutMs || 5 * 60 * 1000, maxBuffer: 20 * 1024 * 1024 }
+    );
+  } finally {
+    if (ticker) clearInterval(ticker);
+  }
 
   const files = (await fs.readdir(pagesDir))
     .filter((f) => /\.jpe?g$/i.test(f))
@@ -423,6 +474,9 @@ export async function convertFixedLayout(inputPath, outputPath, jobDir, opts = {
 
   for (let i = 0; i < files.length; i++) {
     const n = i + 1;
+    // Second pass over the pages — reported separately so the count doesn't
+    // appear to run twice from 1..N with no explanation.
+    opts.onPackaging?.({ page: n, pages: files.length });
     const data = await fs.readFile(path.join(pagesDir, files[i]));
     const dim = imageSize(data) || { width: 1200, height: 1600 };
 
@@ -521,6 +575,19 @@ export async function convert(inputPath, outputPath, jobDir, opts = {}) {
   const mode = opts.mode || "auto";
   const report = (patch) => opts.onProgress?.(patch);
 
+  // Progress wiring for the two strategies. Written as functions so they pick up
+  // `opts` as it is when the strategy actually runs — the OCR branch reassigns it.
+  const fixedOpts = (totalPages) => ({
+    ...opts,
+    totalPages,
+    onProgress: ({ page, pages }) => report({ stage: "rendering", page, pages }),
+    onPackaging: ({ page, pages }) => report({ stage: "packaging", page, pages }),
+  });
+  const reflowOpts = () => ({
+    ...opts,
+    onProgress: ({ percent, detail }) => report({ stage: "converting", percent, detail }),
+  });
+
   report({ stage: "analyzing" });
 
   // Resolve title/author once, with precedence: what the user typed wins, then the
@@ -532,10 +599,12 @@ export async function convert(inputPath, outputPath, jobDir, opts = {}) {
     author: opts.author || meta.author || "",
   };
 
-  // Fixed layout is a deliberate choice — never OCR or reflow it.
+  // Fixed layout is a deliberate choice — never OCR or reflow it. Only the page
+  // count is needed here, so skip the full text-detection pass.
   if (mode === "fixed") {
-    report({ stage: "converting" });
-    await convertFixedLayout(inputPath, outputPath, jobDir, opts);
+    const total = await pageCount(inputPath);
+    report({ stage: "rendering", page: 0, pages: total });
+    await convertFixedLayout(inputPath, outputPath, jobDir, fixedOpts(total));
     return { outputPath, method: "fixed" };
   }
 
@@ -559,9 +628,12 @@ export async function convert(inputPath, outputPath, jobDir, opts = {}) {
       // back essentially empty, which would otherwise produce a blank "book".
       const minChars = Math.max(OCR_MIN_CHARS_PER_PAGE, (info.pages || 1) * OCR_MIN_CHARS_PER_PAGE);
       if (ocr.chars >= minChars) {
-        report({ stage: "building" });
+        report({ stage: "building", page: 0, pages: info.pages || 0 });
         // Judge each page separately, keeping the scan for pages OCR couldn't read.
-        const doc = await buildOcrDocument(inputPath, jobDir, ocr.text.split("\f"), opts);
+        const doc = await buildOcrDocument(inputPath, jobDir, ocr.text.split("\f"), {
+          ...opts,
+          onProgress: ({ page, pages }) => report({ stage: "building", page, pages }),
+        });
         if (doc.textPages > 0) {
           sourcePath = doc.htmlPath;
           ocrApplied = true;
@@ -584,8 +656,8 @@ export async function convert(inputPath, outputPath, jobDir, opts = {}) {
   }
 
   if (mode === "reflowable") {
-    report({ stage: "converting" });
-    const r = await convertReflowable(sourcePath, outputPath, jobDir, opts);
+    report({ stage: "converting", percent: 0 });
+    const r = await convertReflowable(sourcePath, outputPath, jobDir, reflowOpts());
     return {
       outputPath,
       method: ocrApplied ? "reflowable-ocr" : "reflowable",
@@ -597,14 +669,14 @@ export async function convert(inputPath, outputPath, jobDir, opts = {}) {
   // auto: reflow when there's text to reflow (possibly thanks to OCR), else
   // fall back to fixed-layout so the file always converts.
   if (info.isImageBased && !ocrApplied) {
-    report({ stage: "converting" });
-    await convertFixedLayout(inputPath, outputPath, jobDir, opts);
+    report({ stage: "rendering", page: 0, pages: info?.pages || 0 });
+    await convertFixedLayout(inputPath, outputPath, jobDir, fixedOpts(info?.pages || 0));
     return { outputPath, method: "fixed" };
   }
 
   try {
-    report({ stage: "converting" });
-    const r = await convertReflowable(sourcePath, outputPath, jobDir, opts);
+    report({ stage: "converting", percent: 0 });
+    const r = await convertReflowable(sourcePath, outputPath, jobDir, reflowOpts());
     return {
       outputPath,
       method: ocrApplied ? "reflowable-ocr" : "reflowable",
@@ -614,8 +686,8 @@ export async function convert(inputPath, outputPath, jobDir, opts = {}) {
   } catch (e) {
     // Reflowable failed — fall back to the original pages so the user still
     // gets a readable file.
-    report({ stage: "converting" });
-    await convertFixedLayout(inputPath, outputPath, jobDir, opts);
+    report({ stage: "rendering", page: 0, pages: info?.pages || 0 });
+    await convertFixedLayout(inputPath, outputPath, jobDir, fixedOpts(info?.pages || 0));
     return { outputPath, method: "fixed-fallback" };
   }
 }

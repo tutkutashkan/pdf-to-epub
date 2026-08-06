@@ -177,6 +177,7 @@ convertBtn.addEventListener("click", async () => {
 
   convertBtn.disabled = true;
   setProgress(null);
+  resetSteps(); // a second conversion must not inherit the first one's ticks
   showStatus("Uploading…", null);
 
   try {
@@ -204,13 +205,56 @@ function fail(msg) {
   convertBtn.disabled = false;
 }
 
-const STAGE_TEXT = {
-  queued: "Waiting for a free slot…",
-  analyzing: "Examining the PDF…",
-  ocr: "Reading the scanned pages…",
-  building: "Assembling the pages…",
-  converting: "Building the EPUB…",
-};
+// The pipeline, in the order stages actually occur. Not every book visits every
+// step — a text PDF never runs OCR — so steps are only shown once reached, and
+// anything skipped over is marked as such instead of silently vanishing.
+const STEPS = [
+  { key: "analyzing", label: "Examining the PDF" },
+  { key: "ocr", label: "Reading scanned pages", counts: true },
+  { key: "building", label: "Assembling the pages", counts: true },
+  { key: "rendering", label: "Rendering pages", counts: true },
+  { key: "packaging", label: "Packaging the book", counts: true },
+  { key: "converting", label: "Building the EPUB" },
+];
+const STEP_INDEX = Object.fromEntries(STEPS.map((s, i) => [s.key, i]));
+
+const stepList = document.getElementById("stepList");
+
+function resetSteps() {
+  stepList.innerHTML = "";
+  stepList.classList.add("hidden");
+}
+
+function renderSteps(job) {
+  const current = STEP_INDEX[job.stage];
+  if (current == null) return; // queued, or a stage with no step of its own
+  // Which stages ran is the server's to say — see the note on `stages` there.
+  const visited = new Set(job.stages || []);
+
+  stepList.classList.remove("hidden");
+  // Only steps this book actually went through. Listing the ones it didn't would
+  // be noise, and misleading besides: rendering/packaging aren't skipped steps,
+  // they're the other branch — a book takes the reflowable path or the
+  // page-image path, never both.
+  stepList.innerHTML = STEPS.filter((s) => visited.has(s.key))
+    .map((step) => {
+      const active = STEP_INDEX[step.key] === current;
+      let detail = "";
+      if (active) {
+        if (step.counts && job.pages > 0 && job.page > 0) {
+          detail = `${job.page} / ${job.pages}`;
+        } else if (job.detail) {
+          detail = job.detail;
+        }
+      }
+      return `<li class="step is-${active ? "active" : "done"}">
+        <span class="step-mark">${active ? "▸" : "✓"}</span>
+        <span class="step-label">${step.label}</span>
+        <span class="step-detail">${detail}</span>
+      </li>`;
+    })
+    .join("");
+}
 
 async function followJob(jobId) {
   for (;;) {
@@ -232,16 +276,21 @@ async function followJob(jobId) {
       return downloadResult(jobId);
     }
 
-    // Real progress only: OCR reports the page it has reached, so show that.
-    // Every other stage gets an honest label rather than an invented percentage.
-    let label = STAGE_TEXT[job.stage] || "Working…";
-    if (job.stage === "ocr" && job.pages > 0 && job.page > 0) {
-      label = `Reading scanned pages — ${job.page} of ${job.pages}`;
+    renderSteps(job);
+
+    // The bar only moves on figures the server actually measured — page counts,
+    // or Calibre's own percentage. No stage gets a fabricated percentage; if
+    // there's nothing real to show, the bar hides rather than guessing.
+    if (job.pages > 0 && job.page > 0) {
       setProgress(job.page / job.pages);
+    } else if (job.percent > 0) {
+      setProgress(job.percent / 100);
     } else {
       setProgress(null);
     }
-    showStatus(label, null);
+
+    const queued = job.status === "queued" && job.queueDepth > 1;
+    showStatus(queued ? "Waiting for a free slot…" : "Converting…", null);
   }
 }
 

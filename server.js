@@ -181,9 +181,17 @@ app.post("/api/convert", limiter, (req, res) => {
     const job = {
       id: path.basename(jobDir),
       status: "queued", // queued → running → done | error
-      stage: "queued", // analyzing | ocr | building | converting
+      // analyzing | ocr | building | rendering | packaging | converting
+      stage: "queued",
+      // Every stage this job has actually entered, in order. The browser polls
+      // once a second and short stages finish in between, so it cannot infer
+      // this from what it happened to observe — it would report a stage that
+      // ran quickly as one that never ran.
+      stages: [],
       page: 0,
       pages: 0,
+      percent: 0,
+      detail: "",
       filename: (base.replace(/[^\w.\- ]+/g, "_").slice(0, 120) || "book") + ".epub",
       jobDir,
       outputPath,
@@ -194,6 +202,15 @@ app.post("/api/convert", limiter, (req, res) => {
 
     opts.onProgress = (patch) => {
       if (job.status === "error") return;
+      // Each stage reports its own counters; clear the previous stage's so a
+      // stale "page 300 of 300" can't linger into a stage that has no pages.
+      if (patch.stage && patch.stage !== job.stage) {
+        job.page = 0;
+        job.pages = 0;
+        job.percent = 0;
+        job.detail = "";
+        if (!job.stages.includes(patch.stage)) job.stages.push(patch.stage);
+      }
       Object.assign(job, patch);
     };
 
@@ -237,8 +254,11 @@ app.get("/api/jobs/:id", (req, res) => {
   res.json({
     status: job.status,
     stage: job.stage,
+    stages: job.stages,
     page: job.page,
     pages: job.pages,
+    percent: job.percent,
+    detail: job.detail,
     method: job.method,
     heuristicsSkipped: job.heuristicsSkipped,
     textPages: job.textPages,

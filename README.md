@@ -248,10 +248,34 @@ browser holding a request open for tens of minutes:
 | `GET /api/jobs/:id` | Status and progress — polled about once a second |
 | `GET /api/jobs/:id/file` | Streams the finished EPUB, then deletes the job's files |
 
-Progress is only ever reported where it can be measured honestly: OCR logs the
-page it has reached, so the UI shows "Reading scanned pages — 47 of 300" with a
-real progress bar. Other stages show a plain label (Examining the PDF / Assembling
-the pages / Building the EPUB) rather than an invented percentage.
+The UI shows the conversion as a **checklist of the steps this book actually went
+through**, so a long wait is legible rather than a spinner that reveals nothing:
+
+```
+✓ Examining the PDF
+✓ Reading scanned pages
+▸ Building the EPUB          Running transforms on e-book
+```
+
+Every figure shown is measured, never invented:
+
+| Step | Where the number comes from |
+| --- | --- |
+| Reading scanned pages | OCRmyPDF's per-page log — `28 / 300` |
+| Assembling the pages | the loop that judges each OCR'd page |
+| Rendering pages | counting the page images written so far (pdftoppm is silent) |
+| Packaging the book | the loop that writes pages into the EPUB |
+| Building the EPUB | Calibre's own `34% Running transforms…` output |
+
+If a step has nothing real to report, the bar hides rather than guessing.
+
+Only steps that actually ran are listed. The reflowable and page-image paths are
+alternatives, so listing the branch not taken would be noise, not information.
+
+Which steps ran is tracked **server-side** and sent as `stages`. The browser polls
+about once a second and short steps finish in between, so it cannot infer this
+from what it happened to observe — it would report a step that ran quickly as one
+that never ran at all.
 
 Jobs are held in memory and swept after `JOB_TTL_MS` (default 30 min), so a user
 who closes the tab mid-conversion doesn't leave files behind. A restart loses
