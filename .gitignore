@@ -10,3 +10,4 @@ node_modules/
 
 # scratch file written by test/smoke.sh
 test/.last_job
+test/.last_remote_job

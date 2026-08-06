@@ -1,0 +1,103 @@
+#!/bin/bash
+# Conversion suite for a *deployed* instance, over HTTP only.
+#
+# test/smoke.sh inspects the container with `docker exec`, which a managed host
+# (Railway, Fly, a VPS you don't have a shell on) can't offer. This checks
+# everything observable from outside instead.
+#
+# Usage: test/smoke-remote.sh https://your-domain
+#        RESOLVE_IP=1.2.3.4 test/smoke-remote.sh https://your-domain   # bypass stale DNS
+BASE="${1:?usage: smoke-remote.sh <base-url>}"
+SP="$(cd "$(dirname "$0")" && pwd)"
+POLL_TIMEOUT="${POLL_TIMEOUT:-600}"
+pass=0; fail=0
+
+# Pin the connection to a specific IP when DNS hasn't propagated yet.
+CURL_OPTS=(-sS --max-time 120)
+if [ -n "$RESOLVE_IP" ]; then
+  host=$(printf '%s' "$BASE" | sed -E 's#^https?://##; s#/.*##')
+  port=443; case "$BASE" in http://*) port=80 ;; esac
+  CURL_OPTS+=(--resolve "$host:$port:$RESOLVE_IP")
+  echo "(pinning $host:$port → $RESOLVE_IP)"
+fi
+cget(){ curl "${CURL_OPTS[@]}" "$@"; }
+
+ok(){  printf "  \033[32m✓\033[0m %s\n" "$1"; pass=$((pass+1)); }
+bad(){ printf "  \033[31m✗\033[0m %s\n" "$1"; fail=$((fail+1)); }
+
+jget(){ python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('$1','') if d.get('$1') is not None else '')" 2>/dev/null; }
+
+echo "=== 1. reachable, engines present ==="
+H=$(cget "$BASE/api/health")
+echo "  $H"
+for eng in calibre poppler ocr; do
+  echo "$H" | grep -q "\"$eng\":true" && ok "$eng available" || bad "$eng MISSING"
+done
+
+echo "=== 2. the page itself ==="
+PAGE=$(cget "$BASE/")
+echo "$PAGE" | grep -q "Place a PDF here" && ok "homepage renders" || bad "homepage missing marker"
+echo "$PAGE" | grep -q "literata.css" && ok "font stylesheet linked" || bad "font stylesheet missing"
+cget -o /dev/null -w '' "$BASE/fonts/literata-latin-normal.woff2" \
+  && ok "self-hosted font served" || bad "font 404"
+
+# submit → poll → "method|textPages|imagePages"; job id lands in $SP/.last_remote_job
+run_job(){
+  local file="$1" mode="$2" ocr="$3" J S
+  J=$(cget -X POST -F "file=@$file" -F "mode=$mode" -F "ocr=$ocr" "$BASE/api/convert" | jget jobId)
+  [ -z "$J" ] && { echo "NOJOB||"; return; }
+  echo "$J" > "$SP/.last_remote_job"
+  for _ in $(seq 1 "$POLL_TIMEOUT"); do
+    S=$(cget "$BASE/api/jobs/$J")
+    echo "$S" | grep -q '"status":"done"\|"status":"error"' && break
+    sleep 1
+  done
+  echo "$S" | python3 -c "
+import sys,json;j=json.load(sys.stdin)
+print(f\"{j.get('method') or 'ERROR:'+str(j.get('error'))}|{j.get('textPages','')}|{j.get('imagePages','')}\")" 2>/dev/null
+}
+
+echo "=== 3. text PDF → reflowable (adjustable font size) ==="
+R=$(run_job "$SP/gatsby.pdf" auto false); echo "  $R"
+[ "${R%%|*}" = "reflowable" ] && ok "text PDF reflows" || bad "got ${R%%|*}"
+
+echo "=== 4. scanned PDF, OCR off → fixed layout ==="
+R=$(run_job "$SP/scanned.pdf" auto false); echo "  $R"
+[ "${R%%|*}" = "fixed" ] && ok "scan falls back to page images" || bad "got ${R%%|*}"
+
+echo "=== 5. scanned PDF + OCR → reflowable ==="
+R=$(run_job "$SP/scanned.pdf" auto true); echo "  $R"
+[ "${R%%|*}" = "reflowable-ocr" ] && ok "OCR makes a scan resizable" || bad "got ${R%%|*}"
+
+echo "=== 6. partly-unreadable scan → per-page fallback ==="
+R=$(run_job "$SP/mixed11.pdf" auto true); echo "  $R"
+M="${R%%|*}"; TP=$(echo "$R" | cut -d'|' -f2); IP=$(echo "$R" | cut -d'|' -f3)
+[ "$M" = "reflowable-ocr" ] && ok "method reflowable-ocr" || bad "method was $M"
+[ "$TP" = "8" ] && ok "8 readable pages kept as text" || bad "textPages=$TP (want 8)"
+[ "$IP" = "3" ] && ok "3 unreadable pages kept as images" || bad "imagePages=$IP (want 3)"
+
+echo "=== 7. the delivered book ==="
+J=$(cat "$SP/.last_remote_job")
+cget -o "$SP/remote.epub" "$BASE/api/jobs/$J/file"
+file -b "$SP/remote.epub" | grep -q EPUB && ok "valid EPUB downloaded" || bad "not an EPUB"
+N=$(unzip -l "$SP/remote.epub" 2>/dev/null | grep -cE 'p[0-9]+\.jpg')
+[ "$N" = "3" ] && ok "fallback page images embedded" || bad "$N page images (want 3)"
+unzip -p "$SP/remote.epub" index.html 2>/dev/null | grep -q "younger and more vulnerable" \
+  && ok "OCR'd text is in the book" || bad "recognised text missing"
+unzip -l "$SP/remote.epub" 2>/dev/null | grep -qi cover && ok "cover present" || bad "no cover"
+
+echo "=== 8. the job is forgotten once collected ==="
+cget "$BASE/api/jobs/$J" | grep -q "expired" \
+  && ok "job dropped after download" || bad "job still tracked after download"
+
+echo "=== 9. rejects what it should ==="
+printf 'not a pdf' > "$SP/.notpdf.txt"
+cget -X POST -F "file=@$SP/.notpdf.txt" "$BASE/api/convert" | grep -qi "pdf" \
+  && ok "non-PDF upload refused" || bad "non-PDF was accepted"
+rm -f "$SP/.notpdf.txt"
+
+echo
+echo "=============================="
+printf "  passed: %s   failed: %s\n" "$pass" "$fail"
+echo "=============================="
+[ "$fail" = "0" ]
