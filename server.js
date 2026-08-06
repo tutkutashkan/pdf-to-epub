@@ -123,6 +123,24 @@ const limiter = rateLimit({
   message: { error: "Too many conversions from this IP. Please try again later." },
 });
 
+// Tell browsers to reach this site over HTTPS only. Without it, a link or a
+// stale redirect can land someone on plain HTTP — which is precisely what
+// happened here while DNS still pointed at the previous host, and browsers cache
+// such a redirect for a long time.
+//
+// Deliberately conservative to start: no `includeSubDomains`, which would commit
+// every subdomain to HTTPS whether or not it has a certificate, and no `preload`,
+// which is baked into browsers and effectively irreversible. Raise HSTS_MAX_AGE
+// towards a year once it has behaved for a while; set it to 0 to switch off.
+const HSTS_MAX_AGE = Number(process.env.HSTS_MAX_AGE ?? 86400);
+app.use((req, res, next) => {
+  // Only meaningful over TLS; `trust proxy` above makes this true behind Railway.
+  if (HSTS_MAX_AGE > 0 && req.secure) {
+    res.setHeader("Strict-Transport-Security", `max-age=${HSTS_MAX_AGE}`);
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/api/health", async (req, res) => {

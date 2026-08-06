@@ -136,6 +136,7 @@ shell):
 | `OCR_JOBS`           | `2`            | OCR's internal CPU parallelism per job         |
 | `RASTER_DPI`         | `150`          | Resolution for fixed-layout page images        |
 | `WORK_DIR`           | OS temp dir    | Where uploads/outputs are staged (then deleted)|
+| `HSTS_MAX_AGE`       | `86400`        | HSTS lifetime in seconds; `0` disables it      |
 | `JOB_TTL_MS`         | `1800000`      | Delete abandoned jobs after this long (30 min) |
 
 ---
