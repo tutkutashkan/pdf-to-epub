@@ -140,19 +140,59 @@ shell):
 
 ---
 
-## Deploying to a real server
+## Deploying
 
-Because Calibre is a large desktop app, this needs a container host or VPS — not a
-static/serverless free tier. Cheap options that work well:
+Because Calibre is a large desktop app and conversions run for minutes, this needs
+a container host — not a static or short-timeout serverless tier.
 
-- **Hetzner Cloud** CX22 (2 vCPU / 4 GB) — ~$5/mo, best value
-- **Fly.io** — Docker-native, scales to zero when idle
-- **DigitalOcean / Railway / Render** — easy `git push` deploys
+Two supported routes: **Railway** (managed, no server to administer) and a **VPS
+behind Caddy** (cheapest fixed cost, full control). Both build the same Dockerfile.
 
-### Full deploy with automatic HTTPS (recommended)
+### Railway (recommended)
 
-The repo includes a production stack — the app behind **Caddy**, which fetches and
-auto-renews a free Let's Encrypt certificate for you. No manual cert wrangling.
+Railway builds the Dockerfile and terminates TLS itself, so there is no OS to
+patch, no firewall to open, and no certificate to manage — `Caddyfile` and
+`docker-compose.prod.yml` are not used on this route.
+
+1. In Railway, **New Project → Deploy from GitHub repo** and pick this repo. It
+   detects `railway.json` and builds the Dockerfile. The first build is slow
+   (Calibre, Tesseract, and a ~180 MB tarball).
+2. **Settings → Networking → Generate Domain** for a `*.up.railway.app` URL, or
+   add a custom domain and create the `CNAME` Railway shows you.
+3. Optionally set variables (all have sensible defaults — see
+   [Configuration](#configuration)): `MAX_FILE_MB`, `CONCURRENCY`, `OCR_JOBS`,
+   `OCR_TIMEOUT_MS`. **Do not set `PORT`** — Railway injects it and the app reads
+   it.
+
+Then check `/api/health` reports `calibre`, `poppler` and `ocr` all `true`.
+
+Things worth knowing on Railway:
+
+- **Keep it at one replica.** `railway.json` pins `numReplicas: 1` because job
+  state is in memory: a second instance would not recognise job IDs created by the
+  first, so downloads would 404 at random. Scaling out needs shared job state
+  first.
+- **A redeploy loses in-flight jobs** for the same reason, and the container
+  filesystem is ephemeral. Harmless here — finished books are meant to be
+  collected and deleted — but a conversion running during a deploy is lost.
+- **Cost is dominated by CPU-seconds, not uptime**, because conversions are short
+  bursts and the app idles at ~140 MB. Measured: OCR costs ~1.2 CPU-seconds per
+  page; an idle container is ~$1.40/mo. A few hundred books a month stays inside
+  the Hobby plan's included usage. `CONCURRENCY` also caps spend — extra uploads
+  queue instead of starting more work, so the bill cannot scale past that ceiling
+  no matter how much traffic arrives.
+
+### VPS behind Caddy (alternative)
+
+Cheapest fixed cost (a 2 vCPU / 4 GB box is a few euros a month at Hetzner and
+similar) in exchange for administering the machine yourself. Kept as an escape
+hatch: nothing here is Railway-specific, so migrating is a clone and one command.
+
+The app runs behind **Caddy**, which fetches and auto-renews a free Let's Encrypt
+certificate. No manual cert wrangling.
+
+**Build on the server**, not locally — an Apple Silicon Mac produces an arm64 image
+and most VPSes are x86_64. The commands below build in place.
 
 **1. Point your domain at the server.** Create a DNS `A` record (and `AAAA` if you
 have IPv6) for e.g. `pdf2epub.yourdomain.com` → your server's IP. Do this *first* —

@@ -48,11 +48,24 @@ export async function probe(bin, args = ["--version"]) {
   }
 }
 
-export const capabilities = async () => ({
-  calibre: await probe(EBOOK_CONVERT, ["--version"]),
-  poppler: await probe(PDFTOPPM, ["-v"]),
-  ocr: await probe(OCRMYPDF, ["--version"]),
-});
+// Which engines are installed. Every visitor's page load hits /api/health, and
+// each probe spawns a process, so the answer is cached briefly — the installed
+// binaries don't change minute to minute, but the TTL still lets a newly
+// installed engine be picked up without a restart.
+const CAPS_TTL_MS = 60_000;
+let capsCache = { at: 0, value: null };
+
+export async function capabilities() {
+  const now = Date.now();
+  if (capsCache.value && now - capsCache.at < CAPS_TTL_MS) return capsCache.value;
+  const [calibre, poppler, ocr] = await Promise.all([
+    probe(EBOOK_CONVERT, ["--version"]),
+    probe(PDFTOPPM, ["-v"]),
+    probe(OCRMYPDF, ["--version"]),
+  ]);
+  capsCache = { at: now, value: { calibre, poppler, ocr } };
+  return capsCache.value;
+}
 
 // ---- Detection: does this PDF actually contain selectable text? ----
 export async function inspectPdf(inputPath) {
