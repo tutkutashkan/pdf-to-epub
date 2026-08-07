@@ -808,96 +808,6 @@ body {
   opacity: 0.82;
 }
 
-/* ---- Pricing ---- */
-.prices {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
-  max-width: 720px;
-  margin: 0 auto;
-}
-.price {
-  background: var(--paper);
-  border: 1px solid var(--rule);
-  padding: 24px 24px 26px;
-  display: flex;
-  flex-direction: column;
-}
-.price-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.price h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-.tag {
-  font-family: var(--sans);
-  font-size: 9.5px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 4px 8px;
-  border: 1px solid var(--ink-faint);
-  color: var(--ink-soft);
-  white-space: nowrap;
-}
-.tag-soon {
-  border-style: dashed;
-}
-.price-fig {
-  margin: 16px 0 2px;
-  font-size: 34px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.price-unit {
-  font-size: 15px;
-  font-weight: 400;
-  color: var(--ink-faint);
-}
-.price-sub {
-  margin: 0 0 16px;
-  font-size: 13px;
-  color: var(--ink-faint);
-}
-.price-list {
-  list-style: none;
-  margin: 0;
-  padding: 16px 0 0;
-  border-top: 1px solid var(--rule);
-  flex: 1;
-}
-.price-list li {
-  position: relative;
-  padding-left: 16px;
-  margin-bottom: 8px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--ink-soft);
-}
-.price-list li::before {
-  content: "·";
-  position: absolute;
-  left: 4px;
-  color: var(--ink-faint);
-}
-.price-btn {
-  margin-top: 18px;
-  padding: 11px;
-  font-family: var(--sans);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  background: transparent;
-  border: 1px solid var(--rule);
-  cursor: not-allowed;
-}
-
 /* ---- FAQ ---- */
 .faq {
   max-width: 660px;
@@ -952,8 +862,81 @@ body {
   color: var(--ink-soft);
 }
 
+
+/* ---- Explainer: one panel per step, drawing beside the words ---------------
+   The side alternates down the page. On a narrow screen the columns collapse
+   and the figure always follows its text, whichever side it sat on. */
+.explainer {
+  max-width: 940px;
+  margin: 0 auto 54px;
+}
+.explainer-head {
+  margin-bottom: 22px;
+}
+.step {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  padding: 26px 30px 28px;
+  margin-bottom: 14px;
+}
+.step-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  align-items: center;
+}
+/* Steps with no drawing get one readable column rather than a stretched one */
+.step-wide .step-grid {
+  grid-template-columns: 1fr;
+}
+.step-wide .step-text {
+  max-width: 68ch;
+}
+.step-flip .step-text {
+  order: 2;
+}
+.step-flip .fig {
+  order: 1;
+}
+.step-text h3 {
+  margin: 0 0 12px;
+  font-size: 21px;
+  font-weight: 600;
+}
+.step-text p {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.66;
+  color: var(--ink-soft);
+}
+.step-text p:last-child {
+  margin-bottom: 0;
+}
+.step-text p em {
+  font-style: italic;
+  color: var(--ink);
+}
+.step .fig {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .step-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  /* Order is reset so a flipped step doesn't put its drawing before its text */
+  .step-flip .step-text,
+  .step-flip .fig {
+    order: initial;
+  }
+  .step {
+    padding: 22px 20px 24px;
+  }
+}
+
 /* ---------------------------------------------------------------------------
-   How-it-works page
+   Figure and prose styling, shared by the explainer panels
    --------------------------------------------------------------------------- */
 .doc-body {
   padding: 26px 18px 40px;

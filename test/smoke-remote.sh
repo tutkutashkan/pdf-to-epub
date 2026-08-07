@@ -115,9 +115,13 @@ FIGS=$(echo "$LAND" | grep -c "fig-svg")
 # The old standalone URL must keep working for anything already linking to it.
 RD=$(cget -o /dev/null -w '%{http_code} %{redirect_url}' "$BASE/how-it-works")
 echo "$RD" | grep -q "^301" && ok "old /how-it-works still resolves ($RD)" || bad "how-it-works returned $RD"
-# Nothing is for sale yet: the OCR tier must stay disabled and unpurchasable.
-echo "$LAND" | grep -q "Not yet available" && ok "OCR tier marked unavailable" || bad "OCR tier not marked unavailable"
-echo "$LAND" | grep -q 'price-btn" type="button" disabled' && ok "OCR button disabled" || bad "OCR button not disabled"
+# Each step is its own panel, and the drawing sits beside the words.
+STEPS=$(echo "$LAND" | grep -c 'class="step')
+[ "${STEPS:-0}" -ge 5 ] && ok "steps are separate panels" || bad "found $STEPS step panels"
+echo "$LAND" | grep -q "step-flip" && ok "sides alternate" || bad "no alternating step"
+# Nothing is for sale: no price, and nothing anywhere that could take a payment.
+echo "$LAND" | grep -qiE "price-fig|price-btn|per page" \
+  && bad "pricing is showing while nothing is for sale" || ok "no pricing shown"
 echo "$LAND" | grep -qiE "<form[^>]*(pay|checkout|card)|stripe|paypal" \
   && bad "a payment flow is present while nothing is for sale" || ok "no payment collection anywhere"
 echo
