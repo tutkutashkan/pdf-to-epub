@@ -7,8 +7,11 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # A newer push supersedes an in-flight run on the same ref.
-  group: ci-${{ github.ref }}
+  # A newer push supersedes an in-flight run on the same ref. The event is part
+  # of the key so a manual re-run does not cancel the branch's own push run:
+  # keying on the ref alone made every hand-dispatched run kill the automatic
+  # one, which looked exactly like the push trigger being broken.
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
