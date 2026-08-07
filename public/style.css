@@ -397,6 +397,59 @@ body {
   font-style: italic;
 }
 
+/* Section headings inside the panels: a rule and small caps, the way a book
+   separates its front matter. Replaces dash-joined labels. */
+.sec {
+  margin: 14px 0 2px;
+  padding-top: 13px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.sec-first {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* Checkbox rows: title over description, so neither needs a dash to join them */
+.cb {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cb-title {
+  font-weight: 600;
+}
+.cb-note {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+/* "What it does" */
+.prose {
+  padding-bottom: 18px;
+}
+.prose p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.62;
+  color: var(--ink-soft);
+}
+.prose .sec {
+  margin-bottom: 6px;
+}
+.prose .sec:first-child {
+  margin-top: 2px;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .opt-grid .checkbox {
   flex-direction: row;
   align-items: flex-start;

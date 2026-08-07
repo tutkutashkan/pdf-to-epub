@@ -58,9 +58,9 @@
             <p class="byline">for your e-reader</p>
             <hr class="rule" />
             <p class="tagline">
-              Drop in a PDF and get back a clean EPUB you can actually read —
-              adjustable text, real chapters, a proper cover. Files are converted
-              on the fly and deleted straight after.
+              A PDF holds its text in a fixed page. An e-reader wants text that
+              flows. This turns one into the other, so you can set your own font
+              size on a Kindle instead of pinching at a page of frozen type.
             </p>
           </header>
 
@@ -86,7 +86,7 @@
             </svg>
             <div class="fc-meta">
               <div class="fc-name" id="fcName">document.pdf</div>
-              <div class="fc-size" id="fcSize">—</div>
+              <div class="fc-size" id="fcSize"></div>
             </div>
             <button class="fc-remove" id="fcRemove" title="Remove" aria-label="Remove file">
               ×
@@ -97,7 +97,7 @@
             <summary>Settings</summary>
             <div class="opt-grid">
               <div class="field">
-                <span class="lbl">Conversion mode</span>
+                <span class="lbl">Mode</span>
                 <!-- The real value app.js reads; the buttons below drive it. -->
                 <input type="hidden" id="mode" value="auto" />
                 <div class="segmented" role="radiogroup" aria-label="Conversion mode">
@@ -133,14 +133,6 @@
               </div>
 
               <label>
-                <span class="lbl">Title <em>(overrides what's detected)</em></span>
-                <input type="text" id="title" placeholder="Auto-detected from PDF / filename" />
-              </label>
-              <label>
-                <span class="lbl">Author</span>
-                <input type="text" id="author" placeholder="Auto-detected from the PDF" />
-              </label>
-              <label>
                 <span class="lbl">Target device</span>
                 <select id="profile">
                   <option value="tablet" selected>Tablet / general</option>
@@ -150,34 +142,47 @@
                 </select>
               </label>
 
+              <h3 class="sec">The book</h3>
+
+              <label>
+                <span class="lbl">Title</span>
+                <input type="text" id="title" placeholder="Auto-detected from PDF / filename" />
+              </label>
+              <label>
+                <span class="lbl">Author</span>
+                <input type="text" id="author" placeholder="Auto-detected from the PDF" />
+              </label>
+
+              <h3 class="sec">Clean-up</h3>
+
               <label class="checkbox">
                 <input type="checkbox" id="heuristics" checked />
-                <span
-                  >Smart formatting
-                  <em>— detect chapters &amp; tidy the layout</em></span
-                >
+                <span class="cb">
+                  <span class="cb-title">Smart formatting</span>
+                  <span class="cb-note">Finds chapters and tidies the layout.</span>
+                </span>
               </label>
 
               <label class="checkbox">
                 <input type="checkbox" id="stripFurniture" checked />
-                <span
-                  >Remove page furniture
-                  <em
-                    >— drops repeated page numbers, running titles and
-                    watermarks that would otherwise land mid-sentence</em
-                  ></span
-                >
+                <span class="cb">
+                  <span class="cb-title">Remove page furniture</span>
+                  <span class="cb-note">
+                    Drops the page numbers, running titles and watermarks that
+                    would otherwise land mid&#8209;sentence.
+                  </span>
+                </span>
               </label>
 
               <label class="checkbox" id="ocrRow">
                 <input type="checkbox" id="ocr" />
-                <span
-                  >Read text from scanned pages (OCR)
-                  <em
-                    >— makes text adjustable on scanned PDFs. Much slower, and the
-                    result is text-only (figures aren't kept).</em
-                  ></span
-                >
+                <span class="cb">
+                  <span class="cb-title">Read scanned pages (OCR)</span>
+                  <span class="cb-note">
+                    Only for scans with no text at all. Slow, and the result is
+                    text&#8209;only. Skipped automatically when not needed.
+                  </span>
+                </span>
               </label>
               <label id="ocrLangRow" class="hidden">
                 <span class="lbl">OCR language</span>
@@ -192,6 +197,42 @@
                   <option value="nld">Dutch</option>
                 </select>
               </label>
+            </div>
+          </details>
+
+          <!-- Kept collapsed so the page stays a single clear action, but the
+               detail is there for anyone who wants to know what it actually does. -->
+          <details class="options">
+            <summary>What it does</summary>
+            <div class="prose">
+              <h3 class="sec">Text you can resize</h3>
+              <p>
+                Font size, typeface and margins are left to your reader rather
+                than baked in, so the book behaves like one you bought. Headings
+                stay proportionally larger.
+              </p>
+
+              <h3 class="sec">Scans, three ways</h3>
+              <p>
+                A scan whose text was already recognised has that text lifted out
+                and used. One with no text at all can be read with OCR. Anything
+                that still can't be read keeps the original page as an image, so
+                nothing is quietly lost.
+              </p>
+
+              <h3 class="sec">A tidy book</h3>
+              <p>
+                Repeated page numbers, running heads and watermarks are stripped
+                out instead of being reflowed into the middle of a sentence. The
+                first page becomes the cover, and the title and author are read
+                from the PDF.
+              </p>
+
+              <h3 class="sec">Nothing kept</h3>
+              <p>
+                Your file is converted and deleted as soon as you download the
+                result. No account, no tracking, no copy left behind.
+              </p>
             </div>
           </details>
 

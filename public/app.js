@@ -130,11 +130,11 @@ fcRemove.addEventListener("click", clearFile);
 
 // ---- Conversion mode: segmented buttons, each explaining what it does ----
 const MODE_HINTS = {
-  auto: "<strong>Auto</strong> checks the PDF first. If it holds real text you get an adjustable, reflowable book; if it's a scan, it falls back to page images — so a file never fails to convert.",
+  auto: "<strong>Auto</strong> looks at the PDF first. If it holds real text you get an adjustable, reflowable book. If it's a scan, it falls back to page images, so a file never fails to convert.",
   reflowable:
-    "<strong>Reflowable</strong> lets the text reflow to fit the screen, so you can change font size, typeface and margins on your reader. Best for ordinary text PDFs — a scan has no text to reflow.",
+    "<strong>Reflowable</strong> lets the text flow to fit the screen, so you can set font size, typeface and margins on your reader. Best for ordinary text PDFs. A scan has no text to reflow.",
   fixed:
-    "<strong>Fixed layout</strong> turns every page into an image that looks exactly like the PDF. It always works, scans included — but the text is a picture, so its size can't be changed.",
+    "<strong>Fixed layout</strong> turns every page into an image that looks exactly like the PDF. It always works, scans included, but the text is a picture, so its size can't be changed.",
 };
 
 const modeInput = document.getElementById("mode");
@@ -317,15 +317,15 @@ async function downloadResult(jobId) {
 
   const note =
     method === "reflowable-ocr"
-      ? " Text recognised with OCR — font size is adjustable on your reader."
+      ? " The pages were read with OCR, so you can set the font size on your reader."
       : method === "reflowable-textlayer"
-      ? " This scan already held recognised text, which was used — font size is adjustable on your reader."
+      ? " This scan already held recognised text, so you can set the font size on your reader."
       : method === "reflowable"
-      ? " Reflowable — you can adjust font size on your reader."
+      ? " Reflowable, so you can set the font size on your reader."
       : method === "fixed"
-      ? " Fixed layout (scanned PDF) — font size can't be adjusted."
+      ? " Fixed layout, because the pages are images. The font size can't be changed."
       : method === "fixed-fallback"
-      ? " Fixed layout — text extraction wasn't possible, so font size is locked."
+      ? " Fixed layout, because the text couldn't be extracted. The font size can't be changed."
       : "";
   const pageNote = imagePages
     ? ` ${imagePages} page${imagePages > 1 ? "s" : ""} couldn't be read and ${
