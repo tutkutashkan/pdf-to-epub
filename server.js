@@ -143,6 +143,11 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, "public")));
 
+// Extensionless URL for the explainer; static serving already covers the .html.
+app.get("/how-it-works", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "how-it-works.html"));
+});
+
 app.get("/api/health", async (req, res) => {
   const caps = await capabilities();
   res.json({ ok: true, ...caps, queueDepth: queue.depth });

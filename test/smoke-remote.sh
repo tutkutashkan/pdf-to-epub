@@ -107,6 +107,17 @@ cget -X POST -F "file=@$SP/.notpdf.txt" "$BASE/api/convert" | grep -qi "pdf" \
   && ok "non-PDF upload refused" || bad "non-PDF was accepted"
 rm -f "$SP/.notpdf.txt"
 
+echo "=== 11. the explainer page and pricing ==="
+HIW=$(cget "$BASE/how-it-works")
+echo "$HIW" | grep -q "How it works" && ok "how-it-works page served" || bad "how-it-works missing"
+echo "$HIW" | grep -q "fig-svg" && ok "conversion figures present" || bad "figures missing"
+# Nothing is for sale yet: the OCR tier must stay disabled and unpurchasable.
+LAND=$(cget "$BASE/")
+echo "$LAND" | grep -q "Not yet available" && ok "OCR tier marked unavailable" || bad "OCR tier not marked unavailable"
+echo "$LAND" | grep -q "price-btn\" type=\"button\" disabled" && ok "OCR button disabled" || bad "OCR button not disabled"
+echo "$LAND" | grep -qiE "<form[^>]*(pay|checkout|card)|stripe|paypal" \
+  && bad "a payment flow is present while nothing is for sale" || ok "no payment collection anywhere"
+
 echo
 echo "=============================="
 printf "  passed: %s   failed: %s\n" "$pass" "$fail"

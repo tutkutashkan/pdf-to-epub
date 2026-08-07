@@ -17,6 +17,17 @@
     />
   </head>
   <body>
+    <nav class="topnav">
+      <a class="topnav-home" href="/">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 5.5A1.5 1.5 0 0 1 4.5 4H10a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4.5A1.5 1.5 0 0 1 3 15.5z" />
+          <path d="M21 5.5A1.5 1.5 0 0 0 19.5 4H14a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h5.5a1.5 1.5 0 0 0 1.5-1.5z" />
+        </svg>
+        <span>PDF to EPUB</span>
+      </a>
+      <a class="topnav-cta" href="/how-it-works">How it works</a>
+    </nav>
+
     <!-- The whole page is framed as an e-reader device: a bezel around an
          e-ink "screen" that holds the converter, set like a book page. -->
     <div class="device">
@@ -259,6 +270,157 @@
         </div>
       </div>
     </div>
+
+    <!-- Everything below the device sits on the "desk": the case for the thing,
+         for anyone who scrolls past the one action they came for. -->
+    <main class="landing">
+      <section class="band">
+        <h2 class="band-title">Made for reading, not for printing</h2>
+        <div class="cards">
+          <article class="card">
+            <h3>Text you can resize</h3>
+            <p>
+              Font size, typeface and margins are left to your reader instead of
+              being fixed in the file, and headings stay proportionally larger at
+              any size.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Scans become real text</h3>
+            <p>
+              A scan whose text was already recognised has that text lifted out and
+              used, which most converters silently discard.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Nothing quietly lost</h3>
+            <p>
+              Pages that genuinely cannot be read keep their original image inside
+              the book rather than disappearing from it.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Margins thrown away</h3>
+            <p>
+              Repeated page numbers, running titles and watermarks are removed
+              instead of being reflowed into the middle of a sentence.
+            </p>
+          </article>
+          <article class="card">
+            <h3>A proper book</h3>
+            <p>
+              The first page becomes the cover and the title and author are read
+              from the PDF, so your library shows a book rather than a filename.
+            </p>
+          </article>
+          <article class="card card-dark">
+            <h3>Nothing kept</h3>
+            <p>
+              Your file is converted and deleted the moment you download the
+              result. No account, no tracking, no copy left behind.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="band">
+        <h2 class="band-title">Pricing</h2>
+        <p class="band-lede">
+          Converting a PDF is free and always will be. Reading scanned pages with
+          OCR is the one part that costs real computer time, so that will be paid.
+        </p>
+        <div class="prices">
+          <article class="price">
+            <div class="price-head">
+              <h3>Conversion</h3>
+              <span class="tag">Always free</span>
+            </div>
+            <p class="price-fig">£0</p>
+            <p class="price-sub">no account, no sign-up</p>
+            <ul class="price-list">
+              <li>Unlimited conversions</li>
+              <li>Reflowable and fixed-layout output</li>
+              <li>Existing text layers used</li>
+              <li>Page furniture removed</li>
+            </ul>
+          </article>
+
+          <article class="price">
+            <div class="price-head">
+              <h3>OCR credits</h3>
+              <span class="tag tag-soon">Not yet available</span>
+            </div>
+            <p class="price-fig">£0.01<span class="price-unit"> / page</span></p>
+            <p class="price-sub">credits never expire</p>
+            <ul class="price-list">
+              <li>For scans holding no text at all</li>
+              <li>Eight languages</li>
+              <li>Unreadable pages kept as images</li>
+              <li>Only charged for pages actually read</li>
+            </ul>
+            <button class="price-btn" type="button" disabled>Coming soon</button>
+          </article>
+        </div>
+        <p class="band-note">
+          OCR currently runs free of charge while it is being tuned. Nothing is
+          being sold yet and no payment details are collected anywhere on this site.
+        </p>
+      </section>
+
+      <section class="band">
+        <h2 class="band-title">Questions</h2>
+        <div class="faq">
+          <details class="faq-item">
+            <summary>Why does my converted book have no text in it?</summary>
+            <p>
+              It was almost certainly a scan. If it holds a recognised text layer
+              this converter will find and use it. If it holds none, tick "Read
+              scanned pages" to run OCR, or accept a fixed-layout book of page
+              images.
+            </p>
+          </details>
+          <details class="faq-item">
+            <summary>When should I turn on OCR?</summary>
+            <p>
+              Only when a PDF contains no text whatsoever. It is skipped
+              automatically whenever the text is already there, so leaving it on
+              costs you nothing but rarely does anything either.
+            </p>
+          </details>
+          <details class="faq-item">
+            <summary>Can I put the result on a Kindle?</summary>
+            <p>
+              Yes. Amazon's Send to Kindle accepts EPUB, by email or through their
+              web uploader. Choose your reader under Target device first and the
+              book is sized for it.
+            </p>
+          </details>
+          <details class="faq-item">
+            <summary>What happens to my file?</summary>
+            <p>
+              It is converted and then deleted, along with the EPUB, as soon as you
+              download it. Uncollected files are swept up shortly afterwards. There
+              is no account and nothing is retained.
+            </p>
+          </details>
+          <details class="faq-item">
+            <summary>Is there a size limit?</summary>
+            <p>
+              Fifty megabytes per file. A long book is fine; conversion runs in the
+              background and the page shows which stage it has reached.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      <footer class="landing-foot">
+        <span>Powered by Calibre</span>
+        <span class="foot-dot">·</span>
+        <span>Files are never stored</span>
+        <span class="foot-dot">·</span>
+        <a href="/how-it-works">How it works</a>
+      </footer>
+    </main>
 
     <script src="/app.js"></script>
   </body>

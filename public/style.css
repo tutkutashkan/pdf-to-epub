@@ -684,6 +684,447 @@ body {
 .step.is-active .step-detail {
   color: var(--ink);
 }
+/* ---------------------------------------------------------------------------
+   Landing sections and the How-it-works page.
+
+   These sit on the "desk" around the device, so they are paper cards on the room
+   colour rather than more e-ink screen. Same ink, same rules, no new palette.
+   --------------------------------------------------------------------------- */
+
+/* The page now stacks: nav, device, then the landing sections. `justify-content`
+   was centring on the cross axis while the body was a row; as a column it would
+   centre vertically instead and push the top of a tall page out of reach. */
+body {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.topnav {
+  width: 100%;
+  max-width: 940px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 auto 18px;
+  padding: 0 4px;
+}
+.topnav-home {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+.topnav-home svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.topnav-cta {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 2px;
+}
+.topnav-cta:hover {
+  color: var(--ink);
+  border-color: var(--ink-faint);
+}
+
+.landing {
+  width: 100%;
+  max-width: 940px;
+  margin: 46px auto 0;
+}
+.band {
+  margin-bottom: 54px;
+}
+.band-title {
+  margin: 0 0 8px;
+  text-align: center;
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.band-lede {
+  max-width: 52ch;
+  margin: 0 auto 26px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+.band-note {
+  max-width: 56ch;
+  margin: 20px auto 0;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-faint);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.card {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  padding: 20px 22px 22px;
+}
+.card h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+/* One inverted card, the way e-ink shows a selected tile */
+.card-dark {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.card-dark h3 {
+  color: var(--paper);
+}
+.card-dark p {
+  color: var(--paper);
+  opacity: 0.82;
+}
+
+/* ---- Pricing ---- */
+.prices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.price {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  padding: 24px 24px 26px;
+  display: flex;
+  flex-direction: column;
+}
+.price-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.price h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.tag {
+  font-family: var(--sans);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border: 1px solid var(--ink-faint);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.tag-soon {
+  border-style: dashed;
+}
+.price-fig {
+  margin: 16px 0 2px;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.price-unit {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+.price-sub {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--ink-faint);
+}
+.price-list {
+  list-style: none;
+  margin: 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--rule);
+  flex: 1;
+}
+.price-list li {
+  position: relative;
+  padding-left: 16px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.price-list li::before {
+  content: "·";
+  position: absolute;
+  left: 4px;
+  color: var(--ink-faint);
+}
+.price-btn {
+  margin-top: 18px;
+  padding: 11px;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  background: transparent;
+  border: 1px solid var(--rule);
+  cursor: not-allowed;
+}
+
+/* ---- FAQ ---- */
+.faq {
+  max-width: 660px;
+  margin: 0 auto;
+}
+.faq-item {
+  border-bottom: 1px solid var(--rule);
+}
+.faq-item summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 15px 24px 15px 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  position: relative;
+}
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+.faq-item summary::after {
+  content: "+";
+  position: absolute;
+  right: 4px;
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+.faq-item[open] summary::after {
+  content: "–";
+}
+.faq-item p {
+  margin: 0;
+  padding: 0 0 16px;
+  font-size: 14.5px;
+  line-height: 1.62;
+  color: var(--ink-soft);
+}
+
+.landing-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 26px 0 10px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 10.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.landing-foot a {
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------------------------------------------------
+   How-it-works page
+   --------------------------------------------------------------------------- */
+.doc-body {
+  padding: 26px 18px 40px;
+}
+.doc {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  background: var(--paper);
+  background-image: var(--grain);
+  border: 1px solid var(--rule);
+  padding: 46px 52px 40px;
+}
+.doc-head {
+  text-align: center;
+  padding-bottom: 10px;
+}
+.doc-head h1 {
+  margin: 0 0 10px;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.lede {
+  max-width: 46ch;
+  margin: 0 auto;
+  font-size: 16px;
+  line-height: 1.6;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+.doc-sec {
+  padding-top: 30px;
+  margin-top: 30px;
+  border-top: 1px solid var(--rule);
+}
+.step-no {
+  margin: 0 0 4px;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.doc-sec h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+  font-weight: 600;
+}
+.doc-sec p {
+  margin: 0 0 14px;
+  font-size: 15.5px;
+  line-height: 1.68;
+  color: var(--ink-soft);
+}
+.doc-sec p em {
+  font-style: italic;
+  color: var(--ink);
+}
+
+/* ---- Figures: line drawings in ink, so they theme with the page ---- */
+.fig {
+  margin: 24px 0 8px;
+}
+.fig-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.f-line {
+  fill: none;
+  stroke: var(--ink-faint);
+  stroke-width: 1.2;
+}
+.f-ink line {
+  stroke: var(--ink-soft);
+  stroke-width: 2;
+}
+.f-thick line {
+  stroke-width: 3.4;
+}
+.f-thicker line {
+  stroke-width: 5;
+}
+.f-faint {
+  opacity: 0.45;
+}
+.f-dash rect {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+}
+.f-cap,
+.f-lbl,
+.f-run {
+  text-anchor: middle;
+  fill: var(--ink-faint);
+  font-family: var(--sans);
+}
+.f-cap {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.f-lbl {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+.f-run {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+figcaption {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+.doc-cta {
+  margin: 34px 0 0;
+  text-align: center;
+}
+.cta-link {
+  display: inline-block;
+  padding: 13px 30px;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  text-decoration: none;
+}
+.cta-link:hover {
+  opacity: 0.88;
+}
+.doc-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 680px;
+  margin: 22px auto 0;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.doc-foot a {
+  color: var(--ink-soft);
+}
+
+@media (max-width: 620px) {
+  .doc {
+    padding: 30px 22px 28px;
+  }
+  .landing {
+    margin-top: 34px;
+  }
+  .band-title {
+    font-size: 21px;
+  }
+}
+
 .hidden {
   display: none !important;
 }
