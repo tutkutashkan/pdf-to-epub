@@ -23,9 +23,9 @@
           <path d="M3 5.5A1.5 1.5 0 0 1 4.5 4H10a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4.5A1.5 1.5 0 0 1 3 15.5z" />
           <path d="M21 5.5A1.5 1.5 0 0 0 19.5 4H14a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h5.5a1.5 1.5 0 0 0 1.5-1.5z" />
         </svg>
-        <span>PDF to EPUB</span>
+        <span>Convert2Epub</span>
       </a>
-      <a class="topnav-cta" href="/how-it-works">How it works</a>
+      <a class="topnav-cta" href="#how-it-works">How it works</a>
     </nav>
 
     <!-- The whole page is framed as an e-reader device: a bezel around an
@@ -275,50 +275,252 @@
     <!-- Everything below the device sits on the "desk": the case for the thing,
          for anyone who scrolls past the one action they came for. -->
     <main class="landing">
+      <!-- The explainer lives here rather than on its own page: it is the case
+           for the thing, and it belongs directly under the thing. -->
+      <section class="doc" id="how-it-works">
+        <header class="doc-head">
+          <h2 class="doc-h1">How it works</h2>
+          <p class="lede">
+            A PDF and an EPUB disagree about what a page is. Everything below
+            follows from that one difference.
+          </p>
+        </header>
+
+        <section class="doc-sec">
+          <p class="step-no">One</p>
+          <h3>A fixed page becomes flowing text</h3>
+          <p>
+            A PDF fixes every word at a coordinate on a page of a certain size.
+            That is exactly what you want for printing, and exactly what you don't
+            want on a small screen: the page cannot get narrower, so the text
+            cannot get larger. Zooming just moves a magnifying glass around.
+          </p>
+          <p>
+            An EPUB stores the text as text and lets the reader decide how to set
+            it. Converting means throwing away the page geometry and keeping the
+            words, the order and the structure.
+          </p>
+
+          <figure class="fig">
+            <svg viewBox="0 0 560 190" class="fig-svg" role="img"
+                 aria-label="A fixed PDF page with small dense lines becomes a reader screen with fewer, larger lines">
+              <rect x="24" y="20" width="120" height="150" class="f-line" />
+              <g class="f-ink">
+                <line x1="38" y1="42" x2="130" y2="42" /><line x1="38" y1="54" x2="130" y2="54" />
+                <line x1="38" y1="66" x2="130" y2="66" /><line x1="38" y1="78" x2="130" y2="78" />
+                <line x1="38" y1="90" x2="130" y2="90" /><line x1="38" y1="102" x2="130" y2="102" />
+                <line x1="38" y1="114" x2="130" y2="114" /><line x1="38" y1="126" x2="130" y2="126" />
+                <line x1="38" y1="138" x2="130" y2="138" /><line x1="38" y1="150" x2="104" y2="150" />
+              </g>
+              <text x="84" y="186" class="f-cap">PDF · fixed page</text>
+
+              <g class="f-line">
+                <line x1="176" y1="95" x2="232" y2="95" />
+                <path d="M224 89l8 6-8 6" />
+              </g>
+
+              <rect x="264" y="20" width="120" height="150" rx="6" class="f-line" />
+              <rect x="274" y="30" width="100" height="130" class="f-line f-faint" />
+              <g class="f-ink f-thick">
+                <line x1="284" y1="48" x2="364" y2="48" /><line x1="284" y1="66" x2="364" y2="66" />
+                <line x1="284" y1="84" x2="364" y2="84" /><line x1="284" y1="102" x2="364" y2="102" />
+                <line x1="284" y1="120" x2="330" y2="120" />
+              </g>
+              <text x="324" y="186" class="f-cap">EPUB · your font size</text>
+
+              <rect x="416" y="42" width="96" height="106" rx="6" class="f-line" />
+              <g class="f-ink f-thicker">
+                <line x1="430" y1="66" x2="498" y2="66" /><line x1="430" y1="90" x2="498" y2="90" />
+                <line x1="430" y1="114" x2="470" y2="114" />
+              </g>
+              <text x="464" y="186" class="f-cap">larger again</text>
+            </svg>
+            <figcaption>
+              The same words, set three ways. Only the reader decides which.
+            </figcaption>
+          </figure>
+        </section>
+
+        <section class="doc-sec">
+          <p class="step-no">Two</p>
+          <h3>Scans are three different problems</h3>
+          <p>
+            A scanned book is a stack of photographs. Whether it can become real
+            text depends on something you cannot see by looking at it: whether
+            anyone has already run character recognition over it, and left the
+            result inside.
+          </p>
+
+          <figure class="fig">
+            <svg viewBox="0 0 560 214" class="fig-svg" role="img"
+                 aria-label="Three kinds of scan: one with a hidden text layer, one with no text, one unreadable">
+              <rect x="16" y="24" width="140" height="112" class="f-line" />
+              <g class="f-ink f-faint">
+                <line x1="30" y1="46" x2="142" y2="46" /><line x1="30" y1="60" x2="142" y2="60" />
+                <line x1="30" y1="74" x2="142" y2="74" /><line x1="30" y1="88" x2="142" y2="88" />
+                <line x1="30" y1="102" x2="118" y2="102" />
+              </g>
+              <g class="f-dash"><rect x="26" y="38" width="120" height="72" /></g>
+              <text x="86" y="154" class="f-cap">invisible text layer</text>
+              <text x="86" y="178" class="f-lbl">Already recognised</text>
+              <text x="86" y="196" class="f-cap">lifted out and used</text>
+
+              <rect x="210" y="24" width="140" height="112" class="f-line" />
+              <g class="f-ink f-faint">
+                <line x1="224" y1="46" x2="336" y2="46" /><line x1="224" y1="60" x2="336" y2="60" />
+                <line x1="224" y1="74" x2="336" y2="74" /><line x1="224" y1="88" x2="312" y2="88" />
+              </g>
+              <text x="280" y="154" class="f-cap">picture only</text>
+              <text x="280" y="178" class="f-lbl">No text at all</text>
+              <text x="280" y="196" class="f-cap">read with OCR</text>
+
+              <rect x="404" y="24" width="140" height="112" class="f-line" />
+              <g class="f-ink f-faint">
+                <line x1="418" y1="52" x2="470" y2="52" /><line x1="486" y1="52" x2="530" y2="52" />
+                <line x1="418" y1="72" x2="500" y2="72" /><line x1="430" y1="92" x2="530" y2="92" />
+              </g>
+              <path d="M414 34 L534 126" class="f-line f-faint" />
+              <text x="474" y="154" class="f-cap">too damaged</text>
+              <text x="474" y="178" class="f-lbl">Cannot be read</text>
+              <text x="474" y="196" class="f-cap">page kept as an image</text>
+            </svg>
+            <figcaption>
+              Each page is judged on its own, so one ruined page does not cost you
+              the other three hundred.
+            </figcaption>
+          </figure>
+
+          <p>
+            The first case is the common one and the easy one to get wrong. The
+            recognised text is usually written <em>invisibly</em> on top of the page
+            image, and most converters ignore invisible text, hand you a book of
+            photographs, and report success. This one looks for that layer and uses
+            it, which is both faster and more accurate than reading the page again.
+          </p>
+        </section>
+
+        <section class="doc-sec">
+          <p class="step-no">Three</p>
+          <h3>The margins are thrown away</h3>
+          <p>
+            Every page of a book repeats its title, its author and its number in
+            the margin. On paper you never notice. Extract the text and those
+            margins become ordinary lines, so the reader flows them straight into
+            the prose: a page number and a running title landing in the middle of a
+            sentence, several hundred times over a novel.
+          </p>
+          <p>
+            The same goes for anything stamped onto the pages after the fact. Site
+            watermarks, download banners and the adverts that get baked into a
+            free PDF all repeat in exactly the same way, so they are removed on
+            exactly the same grounds.
+          </p>
+
+          <figure class="fig">
+            <svg viewBox="0 0 560 200" class="fig-svg" role="img"
+                 aria-label="The running head, page number and watermark are removed from every page">
+              <rect x="30" y="18" width="170" height="164" class="f-line" />
+              <text x="115" y="40" class="f-run">The Salt Road</text>
+              <g class="f-ink">
+                <line x1="46" y1="60" x2="184" y2="60" /><line x1="46" y1="74" x2="184" y2="74" />
+                <line x1="46" y1="88" x2="184" y2="88" /><line x1="46" y1="102" x2="184" y2="102" />
+                <line x1="46" y1="116" x2="184" y2="116" /><line x1="46" y1="130" x2="160" y2="130" />
+              </g>
+              <text x="115" y="154" class="f-run">- 132 -</text>
+              <text x="115" y="170" class="f-run">free-ebooks.example</text>
+
+              <g class="f-line">
+                <line x1="228" y1="100" x2="284" y2="100" />
+                <path d="M276 94l8 6-8 6" />
+              </g>
+              <text x="256" y="88" class="f-cap">repeats on every page</text>
+
+              <rect x="316" y="18" width="170" height="164" class="f-line" />
+              <g class="f-ink f-thick">
+                <line x1="332" y1="52" x2="470" y2="52" /><line x1="332" y1="70" x2="470" y2="70" />
+                <line x1="332" y1="88" x2="470" y2="88" /><line x1="332" y1="106" x2="470" y2="106" />
+                <line x1="332" y1="124" x2="470" y2="124" /><line x1="332" y1="142" x2="424" y2="142" />
+              </g>
+              <text x="401" y="170" class="f-cap">only the book</text>
+            </svg>
+            <figcaption>
+              Found by repetition: a line recurring across a quarter of the pages is
+              not prose.
+            </figcaption>
+          </figure>
+        </section>
+
+        <section class="doc-sec">
+          <p class="step-no">Four</p>
+          <h3>Typography is handed back to you</h3>
+          <p>
+            A converted book should behave like one you bought. Colours and
+            typefaces baked into the PDF are removed so your reader's own settings
+            apply, and page margins are zeroed so the device's margin control means
+            something. Heading sizes stay proportional rather than absolute, so they
+            remain larger than the body text at any size you choose.
+          </p>
+          <p>
+            The first page becomes the cover, so the book has a proper thumbnail in
+            your library, and the title and author are read out of the PDF rather
+            than left as a filename.
+          </p>
+        </section>
+
+        <section class="doc-sec">
+          <p class="step-no">And then</p>
+          <h3>Your file is deleted</h3>
+          <p>
+            The PDF is converted and both files are removed as soon as you download
+            the result. There is no account, nothing is kept, and nothing is sent
+            anywhere else.
+          </p>
+        </section>
+      </section>
+
       <section class="band">
-        <h2 class="band-title">Made for reading, not for printing</h2>
+        <h2 class="band-title">Made for reading</h2>
         <div class="cards">
           <article class="card">
-            <h3>Text you can resize</h3>
+            <h3>Free, and no account</h3>
             <p>
-              Font size, typeface and margins are left to your reader instead of
-              being fixed in the file, and headings stay proportionally larger at
-              any size.
+              Convert as many books as you like. Nothing to sign up for, nothing to
+              install, no email asked for.
             </p>
           </article>
           <article class="card">
-            <h3>Scans become real text</h3>
+            <h3>Long books are fine</h3>
             <p>
-              A scan whose text was already recognised has that text lifted out and
-              used, which most converters silently discard.
+              Up to 50 MB a file. A full-length book converts in the background and
+              the page shows which stage it has reached, page by page.
             </p>
           </article>
           <article class="card">
-            <h3>Nothing quietly lost</h3>
+            <h3>Eight languages read</h3>
             <p>
-              Pages that genuinely cannot be read keep their original image inside
-              the book rather than disappearing from it.
+              English, Turkish, German, French, Spanish, Italian, Portuguese and
+              Dutch, for scans that need recognising.
             </p>
           </article>
           <article class="card">
-            <h3>Margins thrown away</h3>
+            <h3>Sized for your reader</h3>
             <p>
-              Repeated page numbers, running titles and watermarks are removed
-              instead of being reflowed into the middle of a sentence.
+              Pick a 6&Prime; or 7&Prime; e-ink screen or a tablet, and the book is
+              built to those proportions.
             </p>
           </article>
           <article class="card">
-            <h3>A proper book</h3>
+            <h3>Goes to any device</h3>
             <p>
-              The first page becomes the cover and the title and author are read
-              from the PDF, so your library shows a book rather than a filename.
+              EPUB is read by Kobo, Apple Books and Kindle, which takes it through
+              Amazon's own Send to Kindle.
             </p>
           </article>
           <article class="card card-dark">
-            <h3>Nothing kept</h3>
+            <h3>Open source</h3>
             <p>
-              Your file is converted and deleted the moment you download the
-              result. No account, no tracking, no copy left behind.
+              Every line of it is public under the MIT licence, so you can read
+              exactly what happens to your file, or run it yourself.
             </p>
           </article>
         </div>
@@ -419,7 +621,7 @@
         <span class="foot-dot">·</span>
         <span>Files are never stored</span>
         <span class="foot-dot">·</span>
-        <a href="/how-it-works">How it works</a>
+        <a href="#how-it-works">How it works</a>
       </footer>
     </main>
 

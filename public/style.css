@@ -961,7 +961,7 @@ body {
 .doc {
   width: 100%;
   max-width: 680px;
-  margin: 0 auto;
+  margin: 0 auto 54px;
   background: var(--paper);
   background-image: var(--grain);
   border: 1px solid var(--rule);
@@ -971,7 +971,8 @@ body {
   text-align: center;
   padding-bottom: 10px;
 }
-.doc-head h1 {
+.doc-head h1,
+.doc-h1 {
   margin: 0 0 10px;
   font-size: 32px;
   font-weight: 600;
@@ -999,7 +1000,8 @@ body {
   text-transform: uppercase;
   color: var(--ink-faint);
 }
-.doc-sec h2 {
+.doc-sec h2,
+.doc-sec h3 {
   margin: 0 0 12px;
   font-size: 22px;
   font-weight: 600;

@@ -143,9 +143,10 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// Extensionless URL for the explainer; static serving already covers the .html.
-app.get("/how-it-works", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "how-it-works.html"));
+// The explainer moved onto the landing page. Keep the old URL working rather
+// than breaking any link that already points at it.
+app.get(["/how-it-works", "/how-it-works.html"], (req, res) => {
+  res.redirect(301, "/#how-it-works");
 });
 
 app.get("/api/health", async (req, res) => {
