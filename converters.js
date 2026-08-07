@@ -10,6 +10,7 @@ const EBOOK_CONVERT = process.env.EBOOK_CONVERT || "ebook-convert";
 const PDFTOPPM = process.env.PDFTOPPM || "pdftoppm";
 const PDFTOTEXT = process.env.PDFTOTEXT || "pdftotext";
 const PDFINFO = process.env.PDFINFO || "pdfinfo";
+const PDFIMAGES = process.env.PDFIMAGES || "pdfimages";
 const OCRMYPDF = process.env.OCRMYPDF || "ocrmypdf";
 const RASTER_DPI = Number(process.env.RASTER_DPI) || 150;
 // A full-length book takes minutes, not seconds — a 300-page PDF alone runs for a
@@ -34,6 +35,10 @@ const MIN_CHARS_PER_PAGE = 12;
 // OCR output is held to a stricter standard — we only replace the page images
 // with recognised text if enough of it came back to make a real book.
 const OCR_MIN_CHARS_PER_PAGE = 50;
+
+// Share of pages that must be a full-page image before the PDF counts as a scan.
+// Not 100%: real books have a plate section, a colophon, or a stray typeset page.
+const SCANNED_PAGE_RATIO = 0.8;
 
 const escapeXml = (s = "") =>
   s.replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" }[c]));
@@ -78,13 +83,56 @@ export async function pageCount(inputPath) {
   }
 }
 
+// ---- Is this a scan? i.e. are the pages themselves pictures ----
+// Returns the share of pages carrying an image big enough to be the page itself.
+// A digital PDF scores 0; a scanned book scores ~1. Cheap: ~0.7s for 286 pages.
+export async function pageImageCoverage(inputPath, pages, pageW, pageH) {
+  if (!pages) return 0;
+  try {
+    const { stdout } = await execFileAsync(PDFIMAGES, ["-list", inputPath], {
+      timeout: 120000,
+      maxBuffer: 50 * 1024 * 1024,
+    });
+    // A page-sized image is at least ~100dpi across the page's width and height.
+    const minW = (pageW / 72) * 100;
+    const minH = (pageH / 72) * 100;
+    const covered = new Set();
+    for (const line of stdout.split("\n").slice(2)) {
+      const f = line.trim().split(/\s+/);
+      const [pg, w, h] = [Number(f[0]), Number(f[3]), Number(f[4])];
+      if (Number.isFinite(pg) && w >= minW && h >= minH) covered.add(pg);
+    }
+    return covered.size / pages;
+  } catch {
+    return 0; // pdfimages missing or unreadable — assume not a scan
+  }
+}
+
+// ---- Pull out a PDF's existing text layer, one chunk per page ----
+// pdftotext separates pages with a form feed, which is the same shape
+// buildOcrDocument already consumes.
+export async function extractTextLayer(inputPath) {
+  const { stdout } = await execFileAsync(PDFTOTEXT, ["-q", inputPath, "-"], {
+    timeout: 180000,
+    maxBuffer: 200 * 1024 * 1024,
+  });
+  return stdout;
+}
+
 // ---- Detection: does this PDF actually contain selectable text? ----
 export async function inspectPdf(inputPath) {
   let pages = 0;
+  let pageW = 612;
+  let pageH = 792;
   try {
     const { stdout } = await execFileAsync(PDFINFO, [inputPath], { timeout: 30000 });
     const m = stdout.match(/^Pages:\s+(\d+)/m);
     if (m) pages = Number(m[1]);
+    const s = stdout.match(/^Page size:\s+([\d.]+) x ([\d.]+)/m);
+    if (s) {
+      pageW = Number(s[1]);
+      pageH = Number(s[2]);
+    }
   } catch {
     /* ignore — treated as unknown below */
   }
@@ -101,7 +149,23 @@ export async function inspectPdf(inputPath) {
   }
 
   const perPage = pages > 0 ? textChars / pages : textChars;
-  return { pages, textChars, isImageBased: perPage < MIN_CHARS_PER_PAGE };
+  const isImageBased = perPage < MIN_CHARS_PER_PAGE;
+
+  // A scan can still carry a text layer — someone already OCR'd it. That text is
+  // usually written invisibly on top of the page image, and Calibre's PDF input
+  // ignores invisible text, so handing it the PDF yields a book of pictures with
+  // the words silently dropped. Knowing the pages are images lets us take the
+  // text out ourselves instead.
+  const imageRatio = await pageImageCoverage(inputPath, pages, pageW, pageH);
+
+  return {
+    pages,
+    textChars,
+    isImageBased,
+    imageRatio,
+    // Pages are pictures, yet text comes out of it: a scan with an OCR layer.
+    hasHiddenTextLayer: !isImageBased && imageRatio >= SCANNED_PAGE_RATIO,
+  };
 }
 
 // ---- Read the PDF's embedded title/author (Document Info dictionary) ----
@@ -615,7 +679,36 @@ export async function convert(inputPath, outputPath, jobDir, opts = {}) {
   // text gains nothing and would just burn CPU.
   let sourcePath = inputPath;
   let ocrApplied = false;
+  let usedTextLayer = false;
   let pageStats = null;
+
+  // A scan someone has already OCR'd: the words are there, but written invisibly
+  // over the page images, and Calibre drops them. Take the text out with
+  // pdftotext and build the book from that — no OCR needed, the recognition has
+  // already been done, and it is far better than re-recognising it ourselves.
+  if (info.hasHiddenTextLayer) {
+    try {
+      report({ stage: "extracting", pages: info.pages || 0, page: 0 });
+      const text = await extractTextLayer(inputPath);
+      const doc = await buildOcrDocument(inputPath, jobDir, text.split("\f"), {
+        ...opts,
+        onProgress: ({ page, pages }) => report({ stage: "building", page, pages }),
+      });
+      if (doc.textPages > 0) {
+        sourcePath = doc.htmlPath;
+        usedTextLayer = true;
+        pageStats = { textPages: doc.textPages, imagePages: doc.imagePages };
+        opts = { ...opts, isText: false, coverSource: inputPath };
+        console.error(
+          `Text layer: ${doc.textPages} page(s) as text, ${doc.imagePages} kept as images.`
+        );
+      }
+    } catch (e) {
+      // Fall through to the normal paths — worse output, but still a book.
+      console.error("Text-layer extraction failed, continuing without it:", e.message);
+    }
+  }
+
   if (opts.ocr && info.isImageBased) {
     try {
       report({ stage: "ocr", pages: info.pages || 0, page: 0 });
@@ -660,7 +753,7 @@ export async function convert(inputPath, outputPath, jobDir, opts = {}) {
     const r = await convertReflowable(sourcePath, outputPath, jobDir, reflowOpts());
     return {
       outputPath,
-      method: ocrApplied ? "reflowable-ocr" : "reflowable",
+      method: ocrApplied ? "reflowable-ocr" : usedTextLayer ? "reflowable-textlayer" : "reflowable",
       heuristicsSkipped: r.heuristicsSkipped,
       ...pageStats,
     };
@@ -679,7 +772,7 @@ export async function convert(inputPath, outputPath, jobDir, opts = {}) {
     const r = await convertReflowable(sourcePath, outputPath, jobDir, reflowOpts());
     return {
       outputPath,
-      method: ocrApplied ? "reflowable-ocr" : "reflowable",
+      method: ocrApplied ? "reflowable-ocr" : usedTextLayer ? "reflowable-textlayer" : "reflowable",
       heuristicsSkipped: r.heuristicsSkipped,
       ...pageStats,
     };

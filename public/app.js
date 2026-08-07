@@ -210,6 +210,7 @@ function fail(msg) {
 // anything skipped over is marked as such instead of silently vanishing.
 const STEPS = [
   { key: "analyzing", label: "Examining the PDF" },
+  { key: "extracting", label: "Extracting the text layer" },
   { key: "ocr", label: "Reading scanned pages", counts: true },
   { key: "building", label: "Assembling the pages", counts: true },
   { key: "rendering", label: "Rendering pages", counts: true },
@@ -316,6 +317,8 @@ async function downloadResult(jobId) {
   const note =
     method === "reflowable-ocr"
       ? " Text recognised with OCR — font size is adjustable on your reader."
+      : method === "reflowable-textlayer"
+      ? " This scan already held recognised text, which was used — font size is adjustable on your reader."
       : method === "reflowable"
       ? " Reflowable — you can adjust font size on your reader."
       : method === "fixed"

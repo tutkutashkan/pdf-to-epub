@@ -90,7 +90,18 @@ echo "=== 8. the job is forgotten once collected ==="
 cget "$BASE/api/jobs/$J" | grep -q "expired" \
   && ok "job dropped after download" || bad "job still tracked after download"
 
-echo "=== 9. rejects what it should ==="
+echo "=== 9. scan that already holds an invisible text layer ==="
+# Calibre ignores invisible text, so handing it such a PDF yields page images with
+# the words silently dropped — a book that looks converted and is unreadable.
+# Runs after the checks above because collecting its result consumes the job.
+R=$(run_job "$SP/textlayer.pdf" auto false); echo "  $R"
+[ "${R%%|*}" = "reflowable-textlayer" ] && ok "existing text layer used" || bad "got ${R%%|*}"
+JT=$(cat "$SP/.last_remote_job")
+cget -o "$SP/textlayer.epub" "$BASE/api/jobs/$JT/file"
+TLC=$(unzip -p "$SP/textlayer.epub" index.html 2>/dev/null | sed -e 's/<[^>]*>//g' | tr -d '[:space:]' | wc -c | tr -d ' ')
+[ "${TLC:-0}" -gt 500 ] && ok "text carried into the book ($TLC chars)" || bad "only $TLC chars — text was dropped"
+
+echo "=== 10. rejects what it should ==="
 printf 'not a pdf' > "$SP/.notpdf.txt"
 cget -X POST -F "file=@$SP/.notpdf.txt" "$BASE/api/convert" | grep -qi "pdf" \
   && ok "non-PDF upload refused" || bad "non-PDF was accepted"
