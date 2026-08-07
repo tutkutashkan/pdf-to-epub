@@ -176,6 +176,7 @@ app.post("/api/convert", limiter, (req, res) => {
       title: (req.body.title || "").toString().slice(0, 300).trim(),
       author: (req.body.author || "").toString().slice(0, 300).trim(),
       heuristics: req.body.heuristics !== "false", // default on
+      stripFurniture: req.body.stripFurniture !== "false", // default on
       profile: ["tablet", "kindle_pw3", "kindle_oasis", "generic_eink"].includes(req.body.profile)
         ? req.body.profile
         : "tablet",

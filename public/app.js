@@ -171,6 +171,7 @@ convertBtn.addEventListener("click", async () => {
   form.append("author", document.getElementById("author").value);
   form.append("profile", document.getElementById("profile").value);
   form.append("heuristics", document.getElementById("heuristics").checked);
+  form.append("stripFurniture", document.getElementById("stripFurniture").checked);
   form.append("mode", document.getElementById("mode").value);
   form.append("ocr", document.getElementById("ocr").checked);
   form.append("ocrLang", document.getElementById("ocrLang").value);

@@ -281,6 +281,64 @@ export async function runOcr(inputPath, jobDir, opts = {}) {
   return { pdfPath, textPath, text, chars: text.replace(/\s/g, "").length };
 }
 
+// ---- Strip running heads, page numbers and watermarks ----
+// A scanned book repeats its title, author and page number in the margin of every
+// page. Extracting the text pulls that furniture into the middle of the prose,
+// where an e-reader reflows it straight into the sentences. By this point the text
+// has no coordinates, so it can't be removed by position — but it can be removed
+// by repetition: furniture recurs across pages, prose does not.
+//
+// Only the first and last few lines of a page are candidates, and a line must
+// recur across a quarter of the pages, so a phrase repeated inside the prose is
+// safe. Digits normalise to '#', so "-22-" and "-23-" count as one pattern.
+export function stripPageFurniture(pages, opts = {}) {
+  const { headLines = 2, footLines = 3, minPages = 6, ratio = 0.25, maxLen = 80 } = opts;
+  if (pages.length < minPages) return { pages, removed: 0, patterns: [] };
+
+  const norm = (s) => s.trim().replace(/\s+/g, " ").replace(/\d+/g, "#").toLowerCase();
+  const zones = (p) => {
+    const ne = p.split("\n").map((l, i) => [l, i]).filter(([l]) => l.trim());
+    return [ne.slice(0, headLines), ne.slice(-footLines)];
+  };
+
+  const head = new Map();
+  const foot = new Map();
+  for (const p of pages) {
+    const [h, f] = zones(p);
+    for (const [l] of h) {
+      const k = norm(l);
+      if (k) head.set(k, (head.get(k) || 0) + 1);
+    }
+    for (const [l] of f) {
+      const k = norm(l);
+      if (k) foot.set(k, (foot.get(k) || 0) + 1);
+    }
+  }
+
+  const need = Math.max(3, Math.floor(pages.length * ratio));
+  const isFurniture = (line, counts) => {
+    const k = norm(line);
+    return k.length > 0 && k.length <= maxLen && (counts.get(k) || 0) >= need;
+  };
+
+  let removed = 0;
+  const cleaned = pages.map((p) => {
+    const lines = p.split("\n");
+    const [h, f] = zones(p);
+    const kill = new Set();
+    for (const [l, i] of h) if (isFurniture(l, head)) kill.add(i);
+    for (const [l, i] of f) if (isFurniture(l, foot)) kill.add(i);
+    removed += kill.size;
+    return lines.filter((_, i) => !kill.has(i)).join("\n");
+  });
+
+  const patterns = [...head, ...foot]
+    .filter(([k, n]) => k.length <= maxLen && n >= need)
+    .sort((a, b) => b[1] - a[1]);
+
+  return { pages: cleaned, removed, patterns };
+}
+
 // ---- Per-page fallback ----
 // OCR quality varies page by page: a fold, a photo or a bad scan can leave one
 // page unreadable in a book that is otherwise fine. Rather than judging the whole
@@ -295,6 +353,20 @@ async function buildOcrDocument(inputPath, jobDir, pagesText, opts = {}) {
   const dir = path.join(jobDir, "book");
   const imgDir = path.join(dir, "pages");
   await fs.mkdir(imgDir, { recursive: true });
+
+  // Both sources of page text — an existing text layer and our own OCR — carry
+  // the page's running head and number, so clean them here rather than twice.
+  let furniture = { removed: 0, patterns: [] };
+  if (opts.stripFurniture !== false) {
+    furniture = stripPageFurniture(pagesText);
+    pagesText = furniture.pages;
+    if (furniture.removed) {
+      console.error(
+        `Removed ${furniture.removed} header/footer line(s): ` +
+          furniture.patterns.slice(0, 4).map(([k, n]) => `"${k}"×${n}`).join(", ")
+      );
+    }
+  }
 
   const parts = [];
   let textPages = 0;
@@ -349,7 +421,7 @@ ${parts.join("\n")}
 
   const htmlPath = path.join(dir, "index.html");
   await fs.writeFile(htmlPath, html, "utf8");
-  return { htmlPath, textPages, imagePages };
+  return { htmlPath, textPages, imagePages, furnitureRemoved: furniture.removed };
 }
 
 // ---- Strategy A: reflowable EPUB via Calibre ----
