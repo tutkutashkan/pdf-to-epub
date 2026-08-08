@@ -9,6 +9,8 @@ services:
       MAX_FILE_MB: 50
       CONCURRENCY: 2
       CONVERT_TIMEOUT_MS: 1200000
+      # Free locally; left off in production, where CPU time is billed.
+      OCR_ENABLED: "true"
     restart: unless-stopped
     # Guardrails so one huge PDF can't take down the host.
     mem_limit: 2g

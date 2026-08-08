@@ -40,7 +40,8 @@ jobs:
 
       - name: Start container
         run: |
-          docker run -d --name pdf2epub -p 3000:3000 pdf-to-epub:ci
+          # OCR on in CI so the feature stays tested even though production runs without it
+          docker run -d --name pdf2epub -e OCR_ENABLED=true -p 3000:3000 pdf-to-epub:ci
           for i in $(seq 1 60); do
             if curl -sf http://localhost:3000/api/health >/dev/null; then
               echo "up after ${i}s"; exit 0

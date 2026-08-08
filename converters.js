@@ -12,6 +12,11 @@ const PDFTOTEXT = process.env.PDFTOTEXT || "pdftotext";
 const PDFINFO = process.env.PDFINFO || "pdfinfo";
 const PDFIMAGES = process.env.PDFIMAGES || "pdfimages";
 const OCRMYPDF = process.env.OCRMYPDF || "ocrmypdf";
+// OCR is the one step that costs real CPU time, so it has an off switch. On by
+// default; set OCR_ENABLED=false to withdraw it. The state is reported through
+// /api/health, which the page already uses to hide the option, and the server
+// refuses the work regardless, so a stale page cannot spend CPU time either.
+const OCR_ENABLED = process.env.OCR_ENABLED !== "false";
 const RASTER_DPI = Number(process.env.RASTER_DPI) || 150;
 // A full-length book takes minutes, not seconds — a 300-page PDF alone runs for a
 // while and real books are far more complex than that. Too tight a budget kills
@@ -66,7 +71,7 @@ export async function capabilities() {
   const [calibre, poppler, ocr] = await Promise.all([
     probe(EBOOK_CONVERT, ["--version"]),
     probe(PDFTOPPM, ["-v"]),
-    probe(OCRMYPDF, ["--version"]),
+    OCR_ENABLED ? probe(OCRMYPDF, ["--version"]) : Promise.resolve(false),
   ]);
   capsCache = { at: now, value: { calibre, poppler, ocr } };
   return capsCache.value;
@@ -781,7 +786,10 @@ export async function convert(inputPath, outputPath, jobDir, opts = {}) {
     }
   }
 
-  if (opts.ocr && info.isImageBased) {
+  if (opts.ocr && !OCR_ENABLED) {
+    console.error("OCR requested but disabled (set OCR_ENABLED=true to allow it).");
+  }
+  if (OCR_ENABLED && opts.ocr && info.isImageBased) {
     try {
       report({ stage: "ocr", pages: info.pages || 0, page: 0 });
       const ocr = await runOcr(inputPath, jobDir, {
