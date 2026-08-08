@@ -31,9 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       fonts-liberation \
       libegl1 \
       libopengl0 \
-      libgl1 \
       libxcb-cursor0 \
-      libxcb-xinerama0 \
       libxkbcommon0 \
       libxkbcommon-x11-0 \
       libfontconfig1 \
@@ -44,12 +42,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libxi6 \
       libsm6 \
       libice6 \
-      libnss3 \
-      libxdamage1 \
-      libxcomposite1 \
-      libxrandr2 \
-      libxtst6 \
-      libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
 # TARGETARCH is supplied by BuildKit; uname is the fallback for a plain builder.
@@ -63,7 +55,18 @@ RUN set -eux; \
       "https://download.calibre-ebook.com/${CALIBRE_VERSION}/calibre-${CALIBRE_VERSION}-${cal_arch}.txz"; \
     mkdir -p /opt/calibre; \
     tar xJof /tmp/calibre.txz -C /opt/calibre; \
-    rm /tmp/calibre.txz
+    rm /tmp/calibre.txz; \
+    # Calibre ships its viewer, editor and PDF-output stack, none of which a
+    # headless PDF-to-EPUB conversion uses. ebook-convert and Qt6Core/Qt6Gui do
+    # not link WebEngine (checked with ldd), so Chromium and its data can go.
+    rm -rf /opt/calibre/lib/libQt6WebEngine*; \
+    rm -rf /opt/calibre/resources/qtwebengine_devtools_resources.pak; \
+    rm -rf /opt/calibre/resources/icudtl.dat; \
+    # UI translations, the content server, and the ONNX runtime behind Calibre's
+    # newer AI features are all irrelevant to converting a file.
+    rm -rf /opt/calibre/translations; \
+    rm -rf /opt/calibre/resources/content-server; \
+    rm -rf /opt/calibre/lib/libonnxruntime*
 
 ENV PATH="/opt/calibre:${PATH}"
 
