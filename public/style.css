@@ -38,7 +38,7 @@
     --paper: #121211;
     --paper-edge: #191918;
     --ink: #d9d5cc;
-  --ink-strong: #f2efe8;
+    --ink-strong: #f2efe8;
     --ink-soft: #9d9890;
     --ink-faint: #6f6b64;
     --rule: #2f2e2b;
@@ -59,10 +59,14 @@
   --bezel-edge: #000;
   --room: #0a0a09;
 }
+/* Every value the dark blocks override must be overridden back here. Miss one
+   and the theme toggle leaves it behind: --ink-strong was missing, so choosing
+   light on a dark-mode machine kept near-white headings on cream paper. */
 :root[data-theme="light"] {
   --paper: #f7f4ec;
   --paper-edge: #ebe6d9;
   --ink: #1b1a17;
+  --ink-strong: #0b0b09;
   --ink-soft: #56534c;
   --ink-faint: #8b877e;
   --rule: #d8d2c4;
@@ -106,7 +110,7 @@ body {
 /* ---- The device ---- */
 .device {
   width: 100%;
-  max-width: 560px;
+  max-width: 620px;
   background: var(--bezel);
   border: 1px solid var(--bezel-edge);
   border-radius: 18px;
@@ -183,8 +187,8 @@ body {
   text-align: center;
 }
 .mark {
-  width: 38px;
-  height: 38px;
+  width: 46px;
+  height: 46px;
   color: var(--ink);
   margin-bottom: 12px;
 }
@@ -727,15 +731,16 @@ body {
 .topnav-home {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 11px;
   text-decoration: none;
   color: var(--ink);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 .topnav-home .logo-mark {
-  width: 26px;
-  height: 26px;
+  width: 40px;
+  height: 40px;
   /* The mark is filled, not stroked: currentColor is the ink, var(--paper) the
      page, so it inverts correctly in dark mode. */
   color: var(--ink);
