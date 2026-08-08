@@ -429,6 +429,192 @@ ${parts.join("\n")}
   return { htmlPath, textPages, imagePages, furnitureRemoved: furniture.removed };
 }
 
+// ---- Page furniture in a digital PDF ----
+// The repetition-based stripper only ever ran on scans, because that is the only
+// path where we assemble the text ourselves. An ordinary PDF goes straight to
+// Calibre, which keeps the running head and page number and — worse — splices
+// them into the middle of whichever sentence spans the page break:
+//
+//   ...he's wearing a pair of 10 Infect Your Friends and Loved Ones old coveralls...
+//
+// Calibre's own --pdf-header-regex only inspects a page's first line, and books
+// routinely put two things up there, so it cannot do this job. Instead we find
+// the furniture from the PDF itself, where coordinates make it unambiguous, and
+// remove it from the converted book afterwards.
+
+// Letters and digits only. Calibre normalises the letter-spaced "Tor rey Peters"
+// into "Torrey Peters", so anything looser than this fails to match.
+const furnitureKey = (s) =>
+  s.replace(/<[^>]*>/g, " ").replace(/&[a-z]+;|&#\d+;/gi, " ")
+   .toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+// A line is furniture when it sits in a page's margin AND recurs across pages.
+// Position alone catches chapter openers; repetition alone catches refrains.
+export async function findPageFurniture(inputPath, opts = {}) {
+  const { band = 0.1, ratio = 0.25, maxLen = 90 } = opts;
+  let stdout = "";
+  try {
+    ({ stdout } = await execFileAsync(PDFTOTEXT, ["-bbox-layout", inputPath, "-"], {
+      timeout: 180000,
+      maxBuffer: 400 * 1024 * 1024,
+    }));
+  } catch {
+    return new Set(); // no coordinates available, so nothing to be confident about
+  }
+
+  const pages = [...stdout.matchAll(/<page width="[\d.]+" height="([\d.]+)">([\s\S]*?)<\/page>/g)];
+  if (pages.length < 6) return new Set();
+
+  const norm = (t) => t.trim().replace(/\s+/g, " ").replace(/\d+/g, "#").toLowerCase();
+  const counts = new Map();
+  const bodyLens = [];
+  const candidates = [];
+  for (const [, h, body] of pages) {
+    const H = Number(h);
+    for (const m of body.matchAll(/<line[^>]*yMin="([\d.]+)"[^>]*>([\s\S]*?)<\/line>/g)) {
+      const y = Number(m[1]);
+      const text = [...m[2].matchAll(/>([^<]+)<\/word>/g)].map((w) => w[1]).join(" ");
+      if (!text.trim()) continue;
+      if (y >= H * band && y <= H * (1 - band)) {
+        bodyLens.push(text.length); // measure the page's normal line length
+      } else {
+        candidates.push(text);
+      }
+    }
+  }
+
+  // Margins are only a pre-filter: a page's first body line can fall inside the
+  // band on a tightly-set book. A running head is also markedly shorter than a
+  // line of prose, so calibrate against this document's own measure rather than
+  // trusting a fixed number of characters.
+  bodyLens.sort((a, b) => a - b);
+  const medianBody = bodyLens.length ? bodyLens[Math.floor(bodyLens.length / 2)] : 0;
+  const lenCap = Math.min(maxLen, Math.max(40, Math.round(medianBody * 0.6)));
+
+  for (const text of candidates) {
+    const k = norm(text);
+    if (k && k.length <= lenCap) counts.set(k, (counts.get(k) || 0) + 1);
+  }
+
+  const need = Math.max(3, Math.floor(pages.length * ratio));
+  const keys = new Set(
+    [...counts]
+      .filter(([k, n]) => n >= need && k !== "#")
+      .map(([k]) => furnitureKey(k))
+      .filter(Boolean)
+  );
+  // A page number is a shape, not a string, so it is not a key. Record only that
+  // this book puts numbers in its margins, which licenses removing a stray digit
+  // clinging to a paragraph's edge; without that evidence a lone number could be
+  // a footnote marker or part of the prose.
+  if ((counts.get("#") || 0) >= need) keys.marginNumbers = true;
+  return keys;
+}
+
+// Remove those strings from one XHTML file, and heal the seam behind them.
+export function stripFurnitureHtml(html, keys) {
+  let removed = 0;
+  // A page number that ended up inside a paragraph, at its start or its end.
+  if (keys.marginNumbers) {
+    html = html.replace(
+      /(<p\b[^>]*>)\s*<(span|i|b|em|strong)\b[^>]*>\s*\d{1,4}\s*<\/\2>\s*/gi,
+      (m, open) => { removed++; return open; }
+    );
+    html = html.replace(
+      /\s*<(span|i|b|em|strong)\b[^>]*>\s*\d{1,4}\s*<\/\1>\s*(<\/p>)/gi,
+      (m, _t, close) => { removed++; return close; }
+    );
+  }
+  // Inline: the furniture element, plus a bare page number leaning against it.
+  html = html.replace(
+    /(\s*\b\d{1,4}\b)?\s*<(span|i|b|em|strong)\b[^>]*>((?:(?!<\/?\2\b)[\s\S])*?)<\/\2>\s*/gi,
+    (m, _num, tag, inner) => {
+      if (!keys.has(furnitureKey(inner))) return m;
+      removed++;
+      return " ";
+    }
+  );
+  // A block left holding only a number, or nothing, or furniture alone. Headings
+  // are included deliberately: Calibre's heuristics promote a lone page number to
+  // an <h2>, which then becomes an entry in the table of contents, so a book ends
+  // up with a contents list of page numbers instead of chapters.
+  html = html.replace(/<(p|h[1-6])\b[^>]*>([\s\S]*?)<\/\1>/gi, (m, tag, inner) => {
+    const text = inner.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").trim();
+    if (text === "" || /^\d{1,4}$/.test(text) || keys.has(furnitureKey(inner))) {
+      removed++;
+      return "";
+    }
+    return m;
+  });
+
+  // Rejoin a sentence broken by a page turn. Calibre paragraphs each page
+  // separately, so a sentence spanning the break arrives as two paragraphs; the
+  // giveaway is the first ending without punctuation and the second opening
+  // lower-case. A hyphen at the break is a split word, so close it up.
+  let joins = 0;
+  const BLOCK = /<p\b[^>]*>([\s\S]*?)<\/p>(\s*)<p\b[^>]*>([\s\S]*?)<\/p>/i;
+  for (let guard = 0; guard < 500; guard++) {
+    let changed = false;
+    html = html.replace(BLOCK, (m, a, gap, b) => {
+      const endA = a.replace(/<[^>]*>/g, "").trim();
+      const startB = b.replace(/<[^>]*>/g, "").trim();
+      if (!endA || !startB) return m;
+      const unfinished = !/[.!?:;”’"')\]]$/.test(endA);
+      const continues = /^[a-zàâäèéêëîïôöùûüçğışœæ]/.test(startB);
+      if (!(unfinished && continues)) return m;
+      changed = true;
+      joins++;
+      const hyphenated = /-$/.test(endA);
+      const head = hyphenated ? a.replace(/-(\s*(?:<[^>]*>\s*)*)$/, "$1") : a;
+      return `<p>${head}${hyphenated ? "" : " "}${b}</p>`;
+    });
+    if (!changed) break;
+  }
+
+  // Close the gap so an interrupted sentence reads as one again.
+  html = html.replace(/[ \t]{2,}/g, " ").replace(/\s+([,.;:!?’”])/g, "$1");
+  return { html, removed, joins };
+}
+
+// Apply it across a finished EPUB, in place.
+export async function stripFurnitureFromEpub(epubPath, keys) {
+  if (!keys.size) return { removed: 0, joined: 0 };
+  const zip = await JSZip.loadAsync(await fs.readFile(epubPath));
+  let removed = 0;
+  let joined = 0;
+  const names = Object.keys(zip.files).filter((n) => /\.(x?html)$/i.test(n));
+  for (const name of names) {
+    const src = await zip.file(name).async("string");
+    const r = stripFurnitureHtml(src, keys);
+    if (r.removed || r.joins) {
+      zip.file(name, r.html);
+      removed += r.removed;
+      joined += r.joins || 0;
+    }
+  }
+  if (!removed && !joined) return { removed: 0, joined: 0 };
+
+  // Rebuild rather than re-save. EPUB requires "mimetype" to be the archive's
+  // first entry, stored uncompressed; JSZip's regenerate does not preserve that,
+  // and a book that loses it stops being recognised as an EPUB at all.
+  const out = new JSZip();
+  out.file("mimetype", "application/epub+zip", { compression: "STORE" });
+  for (const name of Object.keys(zip.files)) {
+    if (name === "mimetype") continue;
+    const entry = zip.files[name];
+    if (entry.dir) continue;
+    out.file(name, await entry.async("nodebuffer"));
+  }
+  const buf = await out.generateAsync({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+    compressionOptions: { level: 6 },
+    mimeType: "application/epub+zip",
+  });
+  await fs.writeFile(epubPath, buf);
+  return { removed, joined };
+}
+
 // ---- Strategy A: reflowable EPUB via Calibre ----
 export async function convertReflowable(inputPath, outputPath, jobDir, opts = {}) {
   const baseArgs = [inputPath, outputPath, "--output-profile", opts.profile || "tablet"];
@@ -465,6 +651,37 @@ export async function convertReflowable(inputPath, outputPath, jobDir, opts = {}
   // Don't let the PDF's page geometry dictate margins — the Kindle applies its
   // own, and large baked-in margins waste screen space at bigger font sizes.
   args.push("--margin-top", "0", "--margin-bottom", "0", "--margin-left", "0", "--margin-right", "0");
+
+  // Tell Calibre about the furniture before it converts, not just after. Left to
+  // itself it promotes a lone page number to a heading, which becomes a table of
+  // contents full of numbers and splits the book at every page, so a sentence
+  // spanning the break ends up in two different files where nothing can rejoin
+  // it. --pdf-header-regex only inspects a page's first line, which is why the
+  // post-pass still runs, but it stops the damage that cannot be undone later.
+  let furnitureKeys = new Set();
+  if (opts.stripFurniture !== false && /\.pdf$/i.test(opts.coverSource || inputPath)) {
+    furnitureKeys = await findPageFurniture(opts.coverSource || inputPath).catch(() => new Set());
+    if (furnitureKeys.size) {
+      // Match the head with flexible spacing (the PDF may be letter-spaced) and
+      // an optional page number on either side of it.
+      const alts = [...furnitureKeys].map((k) =>
+        k.split("").map((c) => (/[a-z0-9]/.test(c) ? c : "\\" + c)).join("\\s*")
+      );
+      args.push(
+        "--pdf-header-regex",
+        `(?i)^\\s*(\\d{1,4}\\s*)?(${alts.join("|")})(\\s*\\d{1,4})?\\s*$`
+      );
+    }
+  }
+
+  // Calibre inserts a page break at every PDF page and splits the EPUB there, so
+  // a sentence spanning the break lands in two separate documents where nothing
+  // can rejoin it. A PDF page boundary is an artefact of paper, not a structural
+  // division of the book, so stop breaking on it; real chapters come from
+  // headings and still reach the table of contents.
+  if (/\.pdf$/i.test(opts.coverSource || inputPath)) {
+    args.push("--page-breaks-before", "/");
+  }
 
   const timeoutMs = opts.timeoutMs || CONVERT_TIMEOUT_MS;
 
@@ -528,7 +745,31 @@ export async function convertReflowable(inputPath, outputPath, jobDir, opts = {}
   // Guard against "succeeded" but produced an empty/broken file.
   const stat = await fs.stat(outputPath).catch(() => null);
   if (!stat || stat.size < 1024) throw new Error("Calibre produced an empty EPUB.");
-  return { outputPath, heuristicsSkipped };
+
+  // Take the running head and page number out of the finished book. Only for a
+  // PDF source: the coordinates come from the PDF, and an HTML source (our own
+  // assembled text) has already been cleaned before it got here.
+  let furnitureRemoved = 0;
+  if (opts.stripFurniture !== false && /\.pdf$/i.test(opts.coverSource || inputPath)) {
+    try {
+      const keys = furnitureKeys.size
+        ? furnitureKeys
+        : await findPageFurniture(opts.coverSource || inputPath);
+      const r = await stripFurnitureFromEpub(outputPath, keys);
+      furnitureRemoved = r.removed;
+      if (r.removed || r.joined) {
+        console.error(
+          `Cleaned the book: removed ${r.removed} furniture element(s) ` +
+            `(${[...keys].join(", ")}), rejoined ${r.joined} sentence(s) split by a page turn.`
+        );
+      }
+    } catch (e) {
+      // A book with its headers left in beats no book at all.
+      console.error("Furniture removal skipped:", e.message);
+    }
+  }
+
+  return { outputPath, heuristicsSkipped, furnitureRemoved };
 }
 
 // ---- Read width/height from a PNG or JPEG buffer (no image library needed) ----

@@ -145,6 +145,30 @@ echo "$LAND" | grep -qiE "price-fig|price-btn|per page" \
   && bad "pricing is showing while nothing is for sale" || ok "no pricing shown"
 echo "$LAND" | grep -qiE "<form[^>]*(pay|checkout|card)|stripe|paypal" \
   && bad "a payment flow is present while nothing is for sale" || ok "no payment collection anywhere"
+echo "=== 12. a digital PDF's running heads and page numbers ==="
+# The reported bug: Calibre keeps the running head and splices it into whichever
+# sentence spans the page break, so the book reads "a pair of 10 Book Title old
+# coveralls". This ran on scans only until now; ordinary PDFs went uncleaned.
+R=$(run_job "$SP/running-heads.pdf" auto false); echo "  $R"
+[ "${R%%|*}" = "reflowable" ] && ok "digital PDF reflows" || bad "got ${R%%|*}"
+JH=$(cat "$SP/.last_remote_job")
+cget -o "$SP/heads.epub" "$BASE/api/jobs/$JH/file"
+file -b "$SP/heads.epub" | grep -q EPUB && ok "still a valid EPUB after rewriting" || bad "EPUB broken by the rewrite"
+# Newlines collapse to spaces: a rejoined sentence can straddle a line break in
+# the markup, and grep would miss it while the reader sees one sentence.
+HTXT=$(unzip -p "$SP/heads.epub" "*.html" 2>/dev/null | sed -e 's/<[^>]*>/ /g' | tr '\n' ' ' | tr -s ' ')
+echo "$HTXT" | grep -qE "The Salt Road|Marta Nieves" \
+  && bad "running head still in the text" || ok "running heads removed"
+# The fixture ends page 4 mid-sentence and resumes on page 5. Calibre splits the
+# EPUB at every PDF page unless told not to, which used to leave the two halves in
+# different documents where nothing could rejoin them.
+echo "$HTXT" | grep -q "pair of old canvas trousers" \
+  && ok "sentence split by the page turn reads as one" || bad "sentence still broken"
+PROSE=$(echo "$HTXT" | grep -oE "harbour had emptied|Salt had dried|Nobody came down|counted the boats|ferryman had a way|Rain arrived|brother had written|road out of town|left a chair|tide had taken|timetable by heart|last light went" | sort -u | wc -l | tr -d " ")
+[ "${PROSE:-0}" -ge 12 ] && ok "all prose kept ($PROSE/12 lines)" || bad "lost prose: only $PROSE/12"
+echo "$HTXT" | grep -qE "[a-z]\.? [0-9]{1,3} [A-Z][a-z]" \
+  && bad "a page number is still sitting in the text" || ok "no page numbers in the prose"
+
 echo
 echo "=============================="
 printf "  passed: %s   failed: %s\n" "$pass" "$fail"
