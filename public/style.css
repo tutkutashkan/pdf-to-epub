@@ -110,7 +110,7 @@ body {
 /* ---- The device ---- */
 .device {
   width: 100%;
-  max-width: 620px;
+  max-width: 600px;
   background: var(--bezel);
   border: 1px solid var(--bezel-edge);
   border-radius: 18px;
